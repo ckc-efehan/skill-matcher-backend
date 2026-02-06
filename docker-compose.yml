@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:18.1
+    container_name: skill-matcher-db
+    environment:
+      POSTGRES_DB: skillmatcher
+      POSTGRES_USER: skillmatcher
+      POSTGRES_PASSWORD: skillmatcher
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+
+volumes:
+  postgres-data:
