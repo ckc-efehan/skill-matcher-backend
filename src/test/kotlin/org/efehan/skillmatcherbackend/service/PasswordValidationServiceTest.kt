@@ -1,5 +1,6 @@
-package org.efehan.skillmatcherbackend.core.auth
+package org.efehan.skillmatcherbackend.service
 
+import org.efehan.skillmatcherbackend.core.auth.PasswordValidationService
 import org.efehan.skillmatcherbackend.shared.exceptions.PasswordValidationException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -25,12 +26,12 @@ class PasswordValidationServiceTest {
     @Test
     fun `password shorter than minimum length returns error`() {
         val errors = service.validate("sH0r!")
-        assertTrue(errors.any { it.contains("at least ${PasswordValidationService.MIN_LENGTH}") })
+        assertTrue(errors.any { it.contains("at least ${PasswordValidationService.Companion.MIN_LENGTH}") })
     }
 
     @Test
     fun `password exceeding max length returns error`() {
-        val longPassword = "aA1!" + "x".repeat(PasswordValidationService.MAX_LENGTH)
+        val longPassword = "aA1!" + "x".repeat(PasswordValidationService.Companion.MAX_LENGTH)
         val errors = service.validate(longPassword)
         assertTrue(errors.any { it.contains("must not exceed") })
     }
@@ -43,7 +44,7 @@ class PasswordValidationServiceTest {
 
     @Test
     fun `password exactly at maximum length is valid`() {
-        val password = "aB1!" + "x".repeat(PasswordValidationService.MAX_LENGTH - 4)
+        val password = "aB1!" + "x".repeat(PasswordValidationService.Companion.MAX_LENGTH - 4)
         val errors = service.validate(password)
         assertTrue(errors.isEmpty())
     }

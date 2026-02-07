@@ -6,7 +6,6 @@ enum class GlobalErrorCode(
     // Authentication
     BAD_CREDENTIALS("Bad credentials."),
     FORBIDDEN("Forbidden."),
-    UNAUTHORIZED("Unauthorized."),
     USER_MUST_LOGIN("User must be logged in."),
 
     // Validation

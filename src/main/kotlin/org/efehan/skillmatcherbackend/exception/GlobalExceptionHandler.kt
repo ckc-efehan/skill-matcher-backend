@@ -21,7 +21,6 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 @ControllerAdvice
 class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
-
     @ExceptionHandler(InvalidCredentialsException::class)
     fun handleInvalidCredentials(
         exception: InvalidCredentialsException,
@@ -130,10 +129,11 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
                     message = error.defaultMessage ?: "Invalid value",
                 )
             }
-        val body = GlobalErrorCodeResponse(
-            errorCode = GlobalErrorCode.VALIDATION_ERROR,
-            fieldErrors = fieldErrors,
-        )
+        val body =
+            GlobalErrorCodeResponse(
+                errorCode = GlobalErrorCode.VALIDATION_ERROR,
+                fieldErrors = fieldErrors,
+            )
         return ResponseEntity(body, HttpStatus.BAD_REQUEST)
     }
 

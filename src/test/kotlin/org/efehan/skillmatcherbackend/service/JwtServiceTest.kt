@@ -1,6 +1,7 @@
-package org.efehan.skillmatcherbackend.core.auth
+package org.efehan.skillmatcherbackend.service
 
 import org.efehan.skillmatcherbackend.config.properties.JwtProperties
+import org.efehan.skillmatcherbackend.core.auth.JwtService
 import org.efehan.skillmatcherbackend.persistence.RoleModel
 import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.shared.exceptions.InvalidTokenException
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.core.io.ByteArrayResource
+import java.security.Key
 import java.security.KeyPairGenerator
 import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey
@@ -21,6 +23,7 @@ import java.time.Instant
 import java.time.ZoneOffset
 import java.util.Base64
 import java.util.Date
+import java.util.UUID
 
 class JwtServiceTest {
     private lateinit var jwtService: JwtService
@@ -196,7 +199,7 @@ class JwtServiceTest {
     fun `generateOpaqueRefreshToken returns valid UUID`() {
         val token = jwtService.generateOpaqueRefreshToken()
 
-        assertNotNull(java.util.UUID.fromString(token))
+        assertNotNull(UUID.fromString(token))
     }
 
     @Test
@@ -236,7 +239,7 @@ class JwtServiceTest {
     }
 
     private fun toPemResource(
-        key: java.security.Key,
+        key: Key,
         type: String,
     ): ByteArrayResource {
         val encoded = Base64.getMimeEncoder(64, "\n".toByteArray()).encodeToString(key.encoded)
