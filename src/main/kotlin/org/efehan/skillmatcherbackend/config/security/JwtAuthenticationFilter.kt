@@ -5,7 +5,7 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.efehan.skillmatcherbackend.core.auth.CustomUserDetailsService
 import org.efehan.skillmatcherbackend.core.auth.JwtService
-import org.efehan.skillmatcherbackend.exception.InvalidTokenException
+import org.efehan.skillmatcherbackend.shared.exceptions.InvalidTokenException
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource

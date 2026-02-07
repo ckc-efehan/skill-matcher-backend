@@ -1,5 +1,6 @@
 package org.efehan.skillmatcherbackend.core.auth
 
+import org.efehan.skillmatcherbackend.shared.exceptions.PasswordValidationException
 import org.springframework.stereotype.Service
 
 @Service
@@ -59,4 +60,11 @@ class PasswordValidationService {
     }
 
     fun isValid(password: String): Boolean = validate(password).isEmpty()
+
+    fun validateOrThrow(password: String) {
+        val errors = validate(password)
+        if (errors.isNotEmpty()) {
+            throw PasswordValidationException(errors)
+        }
+    }
 }

@@ -5,8 +5,8 @@ import io.jsonwebtoken.JwtException
 import io.jsonwebtoken.JwtParser
 import io.jsonwebtoken.Jwts
 import org.efehan.skillmatcherbackend.config.properties.JwtProperties
-import org.efehan.skillmatcherbackend.exception.InvalidTokenException
 import org.efehan.skillmatcherbackend.persistence.UserModel
+import org.efehan.skillmatcherbackend.shared.exceptions.InvalidTokenException
 import org.springframework.stereotype.Service
 import java.security.KeyFactory
 import java.security.interfaces.RSAPrivateKey

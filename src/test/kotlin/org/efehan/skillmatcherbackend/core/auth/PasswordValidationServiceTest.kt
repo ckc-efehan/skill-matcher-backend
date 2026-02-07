@@ -1,8 +1,12 @@
 package org.efehan.skillmatcherbackend.core.auth
 
+import org.efehan.skillmatcherbackend.shared.exceptions.PasswordValidationException
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertDoesNotThrow
+import org.junit.jupiter.api.assertThrows
 
 class PasswordValidationServiceTest {
     private lateinit var service: PasswordValidationService
@@ -102,5 +106,34 @@ class PasswordValidationServiceTest {
     fun `multiple validation errors are returned together`() {
         val errors = service.validate("  abc  ")
         assertTrue(errors.size >= 2)
+    }
+
+    @Test
+    fun `validateOrThrow does not throw for valid password`() {
+        assertDoesNotThrow {
+            service.validateOrThrow("MyStr0ngP@ss!")
+        }
+    }
+
+    @Test
+    fun `validateOrThrow throws PasswordValidationException for invalid password`() {
+        val exception =
+            assertThrows<PasswordValidationException> {
+                service.validateOrThrow("short")
+            }
+        assertTrue(exception.errors.isNotEmpty())
+    }
+
+    @Test
+    fun `validateOrThrow exception contains all errors`() {
+        val exception =
+            assertThrows<PasswordValidationException> {
+                service.validateOrThrow("abc")
+            }
+        assertTrue(exception.errors.size >= 2)
+        assertEquals(
+            exception.errors.joinToString("; "),
+            "Password validation failed: ${exception.errors.joinToString("; ")}".removePrefix("Password validation failed: "),
+        )
     }
 }

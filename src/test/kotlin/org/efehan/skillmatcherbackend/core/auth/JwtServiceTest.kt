@@ -1,9 +1,9 @@
 package org.efehan.skillmatcherbackend.core.auth
 
 import org.efehan.skillmatcherbackend.config.properties.JwtProperties
-import org.efehan.skillmatcherbackend.exception.InvalidTokenException
 import org.efehan.skillmatcherbackend.persistence.RoleModel
 import org.efehan.skillmatcherbackend.persistence.UserModel
+import org.efehan.skillmatcherbackend.shared.exceptions.InvalidTokenException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
