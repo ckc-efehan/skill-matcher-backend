@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository
 
 @Entity
 @Table(
-    name = "user",
+    name = "users",
     indexes = [
         Index(
             name = "idx_users_username",

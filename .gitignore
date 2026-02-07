@@ -40,3 +40,6 @@ out/
 .kotlin
 
 .claude
+
+### JWT Keys ###
+src/main/resources/keys/
