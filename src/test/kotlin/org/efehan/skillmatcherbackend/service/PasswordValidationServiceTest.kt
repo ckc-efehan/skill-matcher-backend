@@ -122,7 +122,7 @@ class PasswordValidationServiceTest {
             assertThrows<PasswordValidationException> {
                 service.validateOrThrow("short")
             }
-        assertTrue(exception.errors.isNotEmpty())
+        assertTrue(exception.fieldErrors.isNotEmpty())
     }
 
     @Test
@@ -131,10 +131,12 @@ class PasswordValidationServiceTest {
             assertThrows<PasswordValidationException> {
                 service.validateOrThrow("abc")
             }
-        assertTrue(exception.errors.size >= 2)
+        assertTrue(exception.fieldErrors.size >= 2)
         assertEquals(
-            exception.errors.joinToString("; "),
-            "Password validation failed: ${exception.errors.joinToString("; ")}".removePrefix("Password validation failed: "),
+            exception.fieldErrors.joinToString("; ") { it.message },
+            "Password validation failed: ${exception.fieldErrors.joinToString(
+                "; ",
+            ) { it.message }}".removePrefix("Password validation failed: "),
         )
     }
 }

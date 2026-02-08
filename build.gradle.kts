@@ -30,6 +30,7 @@ dependencies {
     implementation(libs.jackson.module.kotlin)
     implementation(libs.spring.boot.starter.security)
     implementation(libs.spring.boot.starter.validation)
+    implementation(libs.springdoc.openapi.starter.webmvc.ui)
     implementation(libs.jjwt.api)
     implementation(libs.jjwt.impl)
     implementation(libs.jjwt.jackson)
@@ -44,6 +45,8 @@ dependencies {
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.kotlin.test.junit5)
+    testImplementation(libs.mockk)
+    testImplementation(libs.assertj)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 

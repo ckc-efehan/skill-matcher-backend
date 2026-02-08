@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatusCode
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -95,11 +96,24 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
     ): ResponseEntity<GlobalErrorCodeResponse> {
         logger.error(
             "EntryNotFoundException [${request.method} ${request.requestURI}] " +
-                "resource=${exception.resource}, identifier=${exception.identifier}, errorCode=${exception.errorCode}",
+                "resource=${exception.resource}, field=${exception.field}, value=${exception.value}, errorCode=${exception.errorCode}",
             exception,
         )
         val body = GlobalErrorCodeResponse(errorCode = exception.errorCode)
         return ResponseEntity(body, exception.status)
+    }
+
+    @ExceptionHandler(BadCredentialsException::class)
+    fun handleBadCredentials(
+        exception: BadCredentialsException,
+        request: HttpServletRequest,
+    ): ResponseEntity<GlobalErrorCodeResponse> {
+        logger.error(
+            "BadCredentialsException [${request.method} ${request.requestURI}]",
+            exception,
+        )
+        val body = GlobalErrorCodeResponse(errorCode = GlobalErrorCode.BAD_CREDENTIALS)
+        return ResponseEntity(body, HttpStatus.UNAUTHORIZED)
     }
 
     @ExceptionHandler(AccessDeniedException::class)

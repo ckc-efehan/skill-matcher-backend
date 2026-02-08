@@ -1,5 +1,7 @@
 package org.efehan.skillmatcherbackend.core.auth
 
+import org.efehan.skillmatcherbackend.exception.FieldErrorResponse
+import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
 import org.efehan.skillmatcherbackend.shared.exceptions.PasswordValidationException
 import org.springframework.stereotype.Service
 
@@ -64,7 +66,11 @@ class PasswordValidationService {
     fun validateOrThrow(password: String) {
         val errors = validate(password)
         if (errors.isNotEmpty()) {
-            throw PasswordValidationException(errors)
+            throw PasswordValidationException(
+                errorCode = GlobalErrorCode.VALIDATION_ERROR,
+                fieldErrors = errors.map { FieldErrorResponse(field = "password", message = it) },
+                message = "Password does not meet the required complexity.",
+            )
         }
     }
 }
