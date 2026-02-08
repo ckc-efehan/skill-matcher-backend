@@ -17,7 +17,7 @@ import java.util.UUID
 abstract class AuditingBaseEntity(
     @Id
     @Column(name = "id", unique = true, nullable = false, updatable = false)
-    val id: String = UUID.randomUUID().toString(),
+    var id: String = UUID.randomUUID().toString(),
     @CreatedDate
     var createdDate: Instant? = null,
     @CreatedBy

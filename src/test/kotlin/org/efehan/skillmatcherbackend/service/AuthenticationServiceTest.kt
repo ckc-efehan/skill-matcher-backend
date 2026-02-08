@@ -18,7 +18,9 @@ import org.efehan.skillmatcherbackend.persistence.RoleModel
 import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.shared.exceptions.AccountDisabledException
+import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
 import org.efehan.skillmatcherbackend.shared.exceptions.InvalidCredentialsException
+import org.efehan.skillmatcherbackend.shared.exceptions.InvalidTokenException
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -28,6 +30,7 @@ import org.springframework.security.authentication.BadCredentialsException
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 
 @ExtendWith(MockKExtension::class)
 @DisplayName("Authentication Service Unit Tests")
@@ -221,5 +224,150 @@ class AuthenticationServiceTest {
         }.isInstanceOf(BadCredentialsException::class.java)
 
         verify(exactly = 0) { jwtService.generateAccessToken(any()) }
+    }
+
+    private fun buildRefreshTokenModel(
+        token: String = REFRESH_TOKEN,
+        user: UserModel = buildTestUser(),
+        expiresAt: Instant = FIXED_INSTANT.plus(7, ChronoUnit.DAYS),
+        revoked: Boolean = false,
+    ): RefreshTokenModel =
+        RefreshTokenModel(
+            token = token,
+            user = user,
+            expiresAt = expiresAt,
+            revoked = revoked,
+        )
+
+    @Test
+    fun `refreshToken returns new access token when refresh token is valid`() {
+        // given
+        val user = buildTestUser()
+        val existingToken = buildRefreshTokenModel(user = user)
+
+        every { refreshTokenRepository.findByToken(REFRESH_TOKEN) } returns existingToken
+        every { jwtService.generateAccessToken(user) } returns ACCESS_TOKEN
+
+        // when
+        val result = authenticationService.refreshToken(REFRESH_TOKEN)
+
+        // then
+        assertThat(result.accessToken).isEqualTo(ACCESS_TOKEN)
+        assertThat(result.refreshToken).isEqualTo(REFRESH_TOKEN)
+        assertThat(result.tokenType).isEqualTo("Bearer")
+        assertThat(result.expiresIn).isEqualTo(ACCESS_TOKEN_EXPIRATION)
+        assertThat(result.user.email).isEqualTo(EMAIL)
+    }
+
+    @Test
+    fun `refreshToken throws EntryNotFoundException when token not found`() {
+        // given
+        every { refreshTokenRepository.findByToken("unknown-token") } returns null
+
+        // then
+        assertThatThrownBy {
+            authenticationService.refreshToken("unknown-token")
+        }.isInstanceOf(EntryNotFoundException::class.java)
+            .satisfies({ ex ->
+                val e = ex as EntryNotFoundException
+                assertThat(e.errorCode).isEqualTo(GlobalErrorCode.REFRESH_TOKEN_NOT_FOUND)
+            })
+
+        verify(exactly = 0) { jwtService.generateAccessToken(any()) }
+    }
+
+    @Test
+    fun `refreshToken throws InvalidTokenException when token is revoked`() {
+        // given
+        val revokedToken = buildRefreshTokenModel(revoked = true)
+
+        every { refreshTokenRepository.findByToken(REFRESH_TOKEN) } returns revokedToken
+
+        // then
+        assertThatThrownBy {
+            authenticationService.refreshToken(REFRESH_TOKEN)
+        }.isInstanceOf(InvalidTokenException::class.java)
+            .satisfies({ ex ->
+                val e = ex as InvalidTokenException
+                assertThat(e.errorCode).isEqualTo(GlobalErrorCode.INVALID_REFRESH_TOKEN)
+            })
+
+        verify(exactly = 0) { jwtService.generateAccessToken(any()) }
+    }
+
+    @Test
+    fun `refreshToken throws InvalidTokenException when token is expired`() {
+        // given
+        val expiredToken =
+            buildRefreshTokenModel(
+                expiresAt = FIXED_INSTANT.minus(1, ChronoUnit.HOURS),
+            )
+
+        every { refreshTokenRepository.findByToken(REFRESH_TOKEN) } returns expiredToken
+
+        // then
+        assertThatThrownBy {
+            authenticationService.refreshToken(REFRESH_TOKEN)
+        }.isInstanceOf(InvalidTokenException::class.java)
+            .satisfies({ ex ->
+                val e = ex as InvalidTokenException
+                assertThat(e.errorCode).isEqualTo(GlobalErrorCode.INVALID_REFRESH_TOKEN)
+            })
+
+        verify(exactly = 0) { jwtService.generateAccessToken(any()) }
+    }
+
+    @Test
+    fun `refreshToken does not rotate when remaining days above threshold`() {
+        // given - token expires in 5 days (above 2-day threshold)
+        val user = buildTestUser()
+        val existingToken =
+            buildRefreshTokenModel(
+                user = user,
+                expiresAt = FIXED_INSTANT.plus(5, ChronoUnit.DAYS),
+            )
+
+        every { refreshTokenRepository.findByToken(REFRESH_TOKEN) } returns existingToken
+        every { jwtService.generateAccessToken(user) } returns ACCESS_TOKEN
+
+        // when
+        val result = authenticationService.refreshToken(REFRESH_TOKEN)
+
+        // then
+        assertThat(result.refreshToken).isEqualTo(REFRESH_TOKEN)
+        assertThat(existingToken.revoked).isFalse()
+        verify(exactly = 0) { jwtService.generateOpaqueRefreshToken() }
+        verify(exactly = 0) { refreshTokenRepository.save(any()) }
+    }
+
+    @Test
+    fun `refreshToken rotates when remaining days below threshold`() {
+        // given - token expires in 1 day (below 2-day threshold)
+        val user = buildTestUser()
+        val newRefreshToken = "new-refresh-token-uuid"
+        val existingToken =
+            buildRefreshTokenModel(
+                user = user,
+                expiresAt = FIXED_INSTANT.plus(1, ChronoUnit.DAYS),
+            )
+        val tokenSlot = slot<RefreshTokenModel>()
+
+        every { refreshTokenRepository.findByToken(REFRESH_TOKEN) } returns existingToken
+        every { jwtService.generateAccessToken(user) } returns ACCESS_TOKEN
+        every { jwtService.generateOpaqueRefreshToken() } returns newRefreshToken
+        every { refreshTokenRepository.save(capture(tokenSlot)) } returnsArgument 0
+
+        // when
+        val result = authenticationService.refreshToken(REFRESH_TOKEN)
+
+        // then
+        assertThat(result.refreshToken).isEqualTo(newRefreshToken)
+        assertThat(existingToken.revoked).isTrue()
+
+        val saved = tokenSlot.captured
+        assertThat(saved.token).isEqualTo(newRefreshToken)
+        assertThat(saved.user).isEqualTo(user)
+        assertThat(saved.expiresAt).isEqualTo(FIXED_INSTANT.plusMillis(REFRESH_TOKEN_EXPIRATION))
+        assertThat(saved.revoked).isFalse()
     }
 }

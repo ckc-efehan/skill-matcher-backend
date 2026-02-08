@@ -7,6 +7,8 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
+import org.springframework.data.jpa.repository.Query
 import java.time.Instant
 
 @Entity
@@ -20,9 +22,18 @@ class RefreshTokenModel(
     @Column(name = "expires_at", nullable = false)
     val expiresAt: Instant,
     @Column(name = "revoked", nullable = false)
-    val revoked: Boolean = false,
+    var revoked: Boolean = false,
 ) : AuditingBaseEntity()
 
 interface RefreshTokenRepository : JpaRepository<RefreshTokenModel, String> {
     fun findByToken(token: String): RefreshTokenModel?
+
+    @Modifying
+    @Query(
+        value =
+            "UPDATE RefreshTokenModel rt " +
+                "SET rt.revoked = true " +
+                "WHERE rt.user.id = :userId",
+    )
+    fun revokeAllUserTokens(userId: String): Int
 }

@@ -143,4 +143,98 @@ class AuthenticationController(
                 request.password,
             ),
         )
+
+    @Operation(
+        summary = "Refresh access token",
+        method = "POST",
+        description =
+            "Uses a valid refresh token to generate a new access token. " +
+                "If the refresh token is close to expiration (< 2 days), it will be rotated.",
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Token refreshed successfully.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = AuthResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Successful refresh",
+                                value = """
+                                {
+                                    "accessToken": "eyJhbGciOiJSUzI1NiJ9...",
+                                    "refreshToken": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                                    "tokenType": "Bearer",
+                                    "expiresIn": 900000,
+                                    "user": {
+                                        "id": "550e8400-e29b-41d4-a716-446655440000",
+                                        "email": "user@example.com",
+                                        "firstName": "John",
+                                        "lastName": "Doe",
+                                        "role": "ADMIN"
+                                    }
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "400",
+                description = "Refresh token not found.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Token not found",
+                                value = """
+                                {
+                                    "errorCode": "REFRESH_TOKEN_NOT_FOUND",
+                                    "errorMessage": "RefreshToken with token not found.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "401",
+                description = "Refresh token expired or invalid.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Token expired or invalid",
+                                value = """
+                                {
+                                    "errorCode": "INVALID_REFRESH_TOKEN",
+                                    "errorMessage": "Refresh token is expired or invalid.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
+    @PostMapping("/refresh")
+    fun refreshToken(
+        @RequestBody
+        request: RefreshTokenRequest,
+    ): ResponseEntity<AuthResponse> =
+        ResponseEntity.ok(
+            authenticationService.refreshToken(request.refreshToken),
+        )
 }
