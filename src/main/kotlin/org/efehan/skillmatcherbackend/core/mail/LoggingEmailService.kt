@@ -21,4 +21,12 @@ class LoggingEmailService : EmailService {
     override fun sendWelcomeEmail(user: UserModel) {
         logger.info("Mock sending welcome email to {}", user.email)
     }
+
+    override fun sendPasswordResetEmail(
+        user: UserModel,
+        resetToken: String,
+        expirationHours: Long,
+    ) {
+        logger.info("Mock sending password reset email to {} with token {} (expires in {}h)", user.email, resetToken, expirationHours)
+    }
 }

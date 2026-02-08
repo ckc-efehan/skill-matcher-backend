@@ -48,6 +48,26 @@ class SmtpEmailService(
         }
     }
 
+    @Async
+    override fun sendPasswordResetEmail(
+        user: UserModel,
+        resetToken: String,
+        expirationHours: Long,
+    ) {
+        try {
+            val resetLink = "${mailProperties.baseUrl}/password-reset/confirm?token=$resetToken"
+            val htmlContent =
+                templateService.renderPasswordReset(
+                    firstName = user.firstName ?: "User",
+                    resetLink = resetLink,
+                    expirationHours = expirationHours,
+                )
+            send(user.email, "Reset Your Password - Skill Matcher", htmlContent)
+        } catch (ex: Exception) {
+            logger.error("Failed to send password reset email to={}", user.email, ex)
+        }
+    }
+
     private fun send(
         to: String,
         subject: String,

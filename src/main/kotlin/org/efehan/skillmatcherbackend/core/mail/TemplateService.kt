@@ -29,4 +29,18 @@ class TemplateService(
             }
         return templateEngine.process("welcome", context)
     }
+
+    fun renderPasswordReset(
+        firstName: String,
+        resetLink: String,
+        expirationHours: Long,
+    ): String {
+        val context =
+            Context().apply {
+                setVariable("firstName", firstName)
+                setVariable("resetLink", resetLink)
+                setVariable("expirationHours", expirationHours)
+            }
+        return templateEngine.process("password-reset", context)
+    }
 }

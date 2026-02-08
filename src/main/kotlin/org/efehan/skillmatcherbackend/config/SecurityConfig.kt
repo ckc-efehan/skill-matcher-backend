@@ -38,6 +38,7 @@ class SecurityConfig(
                         "/api/auth/refresh",
                         "/api/auth/invitations/validate",
                         "/api/auth/invitations/accept",
+                        "/api/auth/password-reset/**",
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
                     ).permitAll()

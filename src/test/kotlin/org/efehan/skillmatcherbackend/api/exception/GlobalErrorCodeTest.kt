@@ -33,6 +33,11 @@ class GlobalErrorCodeTest {
     val expectedInvitationAlreadyAcceptedErrorCode = "INVITATION_ALREADY_ACCEPTED"
     val expectedInvitationTokenExpiredErrorCode = "INVITATION_TOKEN_EXPIRED"
 
+    // Password Reset
+    val expectedInvalidPasswordResetTokenErrorCode = "INVALID_PASSWORD_RESET_TOKEN"
+    val expectedPasswordResetTokenExpiredErrorCode = "PASSWORD_RESET_TOKEN_EXPIRED"
+    val expectedPasswordResetTokenUsedErrorCode = "PASSWORD_RESET_TOKEN_USED"
+
     // User state
     val expectedUserInvalidOperationErrorCode = "USER_INVALID_OPERATION"
     val expectedAccountDisabledErrorCode = "ACCOUNT_DISABLED"
@@ -69,6 +74,11 @@ class GlobalErrorCodeTest {
         assertThat(expectedInvitationAlreadyAcceptedErrorCode).isEqualTo(GlobalErrorCode.INVITATION_ALREADY_ACCEPTED.name)
         assertThat(expectedInvitationTokenExpiredErrorCode).isEqualTo(GlobalErrorCode.INVITATION_TOKEN_EXPIRED.name)
 
+        // Password Reset
+        assertThat(expectedInvalidPasswordResetTokenErrorCode).isEqualTo(GlobalErrorCode.INVALID_PASSWORD_RESET_TOKEN.name)
+        assertThat(expectedPasswordResetTokenExpiredErrorCode).isEqualTo(GlobalErrorCode.PASSWORD_RESET_TOKEN_EXPIRED.name)
+        assertThat(expectedPasswordResetTokenUsedErrorCode).isEqualTo(GlobalErrorCode.PASSWORD_RESET_TOKEN_USED.name)
+
         // User state
         assertThat(expectedUserInvalidOperationErrorCode).isEqualTo(GlobalErrorCode.USER_INVALID_OPERATION.name)
         assertThat(expectedAccountDisabledErrorCode).isEqualTo(GlobalErrorCode.ACCOUNT_DISABLED.name)
@@ -77,7 +87,7 @@ class GlobalErrorCodeTest {
         // General
         assertThat(expectedInternalServerErrorCode).isEqualTo(GlobalErrorCode.INTERNAL_SERVER_ERROR.name)
 
-        assertThat(GlobalErrorCode.entries.size).isEqualTo(20)
+        assertThat(GlobalErrorCode.entries.size).isEqualTo(23)
     }
 
     @Test

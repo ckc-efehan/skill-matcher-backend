@@ -29,6 +29,11 @@ enum class GlobalErrorCode(
     INVITATION_ALREADY_ACCEPTED("Invitation has already been accepted."),
     INVITATION_TOKEN_EXPIRED("Invitation token has expired."),
 
+    // Password Reset
+    INVALID_PASSWORD_RESET_TOKEN("Invalid password reset token."),
+    PASSWORD_RESET_TOKEN_EXPIRED("Password reset token has expired."),
+    PASSWORD_RESET_TOKEN_USED("Password reset token has already been used."),
+
     // User state
     USER_INVALID_OPERATION("Current user state does not allow this operation."),
     ACCOUNT_DISABLED("Account is disabled."),

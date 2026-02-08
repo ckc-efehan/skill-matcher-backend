@@ -10,4 +10,10 @@ interface EmailService {
     )
 
     fun sendWelcomeEmail(user: UserModel)
+
+    fun sendPasswordResetEmail(
+        user: UserModel,
+        resetToken: String,
+        expirationHours: Long,
+    )
 }
