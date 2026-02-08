@@ -32,7 +32,13 @@ class SecurityConfig(
             .exceptionHandling {
                 it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
             }.authorizeHttpRequests {
-                it.requestMatchers("/api/auth/login", "/api/auth/refresh").permitAll()
+                it
+                    .requestMatchers(
+                        "/api/auth/login",
+                        "/api/auth/refresh",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                    ).permitAll()
                 it.requestMatchers("/api/admin/**").hasRole("ADMIN")
                 it.anyRequest().authenticated()
             }.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter::class.java)

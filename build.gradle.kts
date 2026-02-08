@@ -73,6 +73,16 @@ tasks.jacocoTestReport {
         html.required.set(true)
         xml.required.set(true)
     }
+    classDirectories.setFrom(
+        classDirectories.files.map {
+            fileTree(it) {
+                exclude(
+                    "**/SkillMatcherBackendApplicationKt.class",
+                    "**/persistence/*Model.class",
+                )
+            }
+        },
+    )
 }
 
 tasks.jacocoTestCoverageVerification {
