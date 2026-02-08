@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-5.0.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+    <changeSet id="1770560964237-5" author="efehan">
+        <addColumn tableName="refresh_tokens">
+            <column name="token_hash" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet id="1770560964237-6" author="efehan">
+        <addNotNullConstraint columnName="token_hash" tableName="refresh_tokens"/>
+    </changeSet>
+    <changeSet id="1770560964237-7" author="efehan">
+        <addUniqueConstraint columnNames="token_hash" constraintName="uc_refresh_tokens_token_hash"
+                             tableName="refresh_tokens"/>
+    </changeSet>
+    <changeSet id="1770560964237-9" author="efehan">
+        <dropColumn columnName="token" tableName="refresh_tokens"/>
+    </changeSet>
+
+</databaseChangeLog>

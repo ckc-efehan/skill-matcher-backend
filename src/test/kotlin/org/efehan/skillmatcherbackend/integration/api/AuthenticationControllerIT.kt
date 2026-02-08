@@ -161,8 +161,6 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
             }
     }
 
-    // --- refreshToken tests ---
-
     private fun createUserWithRefreshToken(
         expiresAt: Instant = Instant.now().plus(7, ChronoUnit.DAYS),
         revoked: Boolean = false,
@@ -184,7 +182,7 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
         val refreshToken =
             refreshTokenRepository.save(
                 RefreshTokenModel(
-                    token = tokenValue,
+                    tokenHash = jwtService.hashToken(tokenValue),
                     user = user,
                     expiresAt = expiresAt,
                     revoked = revoked,
@@ -303,8 +301,6 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
             }
     }
 
-    // --- logout tests ---
-
     private fun createAuthenticatedUser(): Pair<UserModel, String> {
         val role = roleRepository.save(RoleModel("ADMIN", null))
         val user =
@@ -328,14 +324,14 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
         val (user, accessToken) = createAuthenticatedUser()
         refreshTokenRepository.save(
             RefreshTokenModel(
-                token = "token-1",
+                tokenHash = jwtService.hashToken("token-1"),
                 user = user,
                 expiresAt = Instant.now().plus(7, ChronoUnit.DAYS),
             ),
         )
         refreshTokenRepository.save(
             RefreshTokenModel(
-                token = "token-2",
+                tokenHash = jwtService.hashToken("token-2"),
                 user = user,
                 expiresAt = Instant.now().plus(7, ChronoUnit.DAYS),
             ),

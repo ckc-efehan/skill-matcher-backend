@@ -1,0 +1,153 @@
+package org.efehan.skillmatcherbackend.core.invitation
+
+import jakarta.transaction.Transactional
+import org.efehan.skillmatcherbackend.config.properties.InvitationProperties
+import org.efehan.skillmatcherbackend.config.properties.JwtProperties
+import org.efehan.skillmatcherbackend.core.auth.AuthResponse
+import org.efehan.skillmatcherbackend.core.auth.JwtService
+import org.efehan.skillmatcherbackend.core.auth.PasswordValidationService
+import org.efehan.skillmatcherbackend.core.auth.toAuthUserResponse
+import org.efehan.skillmatcherbackend.core.mail.EmailService
+import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
+import org.efehan.skillmatcherbackend.persistence.InvitationTokenModel
+import org.efehan.skillmatcherbackend.persistence.InvitationTokenRepository
+import org.efehan.skillmatcherbackend.persistence.RefreshTokenModel
+import org.efehan.skillmatcherbackend.persistence.RefreshTokenRepository
+import org.efehan.skillmatcherbackend.persistence.UserModel
+import org.efehan.skillmatcherbackend.persistence.UserRepository
+import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
+import org.efehan.skillmatcherbackend.shared.exceptions.InvalidTokenException
+import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
+import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.stereotype.Service
+import java.time.Clock
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+
+@Service
+@Transactional
+class InvitationService(
+    private val invitationTokenRepository: InvitationTokenRepository,
+    private val userRepository: UserRepository,
+    private val refreshTokenRepository: RefreshTokenRepository,
+    private val jwtService: JwtService,
+    private val jwtProperties: JwtProperties,
+    private val emailService: EmailService,
+    private val invitationProperties: InvitationProperties,
+    private val passwordEncoder: PasswordEncoder,
+    private val passwordValidationService: PasswordValidationService,
+    private val clock: Clock,
+) {
+    private val logger = LoggerFactory.getLogger(InvitationService::class.java)
+
+    fun createAndSendInvitation(user: UserModel) {
+        val rawToken = jwtService.generateOpaqueRefreshToken()
+        val tokenHash = jwtService.hashToken(rawToken)
+        val expiresAt = Instant.now(clock).plus(invitationProperties.tokenExpirationHours, ChronoUnit.HOURS)
+
+        invitationTokenRepository.save(
+            InvitationTokenModel(
+                tokenHash = tokenHash,
+                user = user,
+                expiresAt = expiresAt,
+            ),
+        )
+
+        emailService.sendInvitationEmail(user, rawToken, invitationProperties.tokenExpirationHours)
+        logger.info("Invitation created for user={}", user.username)
+    }
+
+    fun validateInvitation(rawToken: String): ValidateInvitationResponse {
+        val invitation = findValidInvitation(rawToken)
+        logger.info("Invitation validated for user={}", invitation.user.username)
+        return ValidateInvitationResponse(
+            valid = true,
+            email = invitation.user.email,
+        )
+    }
+
+    fun acceptInvitation(
+        rawToken: String,
+        newPassword: String,
+    ): AuthResponse {
+        val invitation = findValidInvitation(rawToken)
+
+        passwordValidationService.validateOrThrow(newPassword)
+
+        logger.info("Accepting invitation for user={}", invitation.user.username)
+        val user = invitation.user
+        user.passwordHash = passwordEncoder.encode(newPassword)
+        user.isEnabled = true
+        userRepository.save(user)
+
+        invitation.used = true
+        invitationTokenRepository.save(invitation)
+
+        val accessToken = jwtService.generateAccessToken(user)
+        val refreshToken = jwtService.generateOpaqueRefreshToken()
+        val refreshTokenHash = jwtService.hashToken(refreshToken)
+        val refreshTokenExpiration = Instant.now(clock).plusMillis(jwtProperties.refreshTokenExpiration)
+
+        refreshTokenRepository.save(
+            RefreshTokenModel(
+                tokenHash = refreshTokenHash,
+                user = user,
+                expiresAt = refreshTokenExpiration,
+            ),
+        )
+
+        return AuthResponse(
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+            tokenType = "Bearer",
+            expiresIn = jwtProperties.accessTokenExpiration,
+            user = user.toAuthUserResponse(),
+        )
+    }
+
+    fun resendInvitation(userId: String) {
+        val user =
+            userRepository.findById(userId).orElseThrow {
+                EntryNotFoundException(
+                    resource = "User",
+                    field = "id",
+                    value = userId,
+                    errorCode = GlobalErrorCode.USER_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
+            }
+
+        logger.info("Resending invitation for userId={}", userId)
+        createAndSendInvitation(user)
+    }
+
+    private fun findValidInvitation(rawToken: String): InvitationTokenModel {
+        val tokenHash = jwtService.hashToken(rawToken)
+        val invitation =
+            invitationTokenRepository.findByTokenHash(tokenHash)
+                ?: throw InvalidTokenException(
+                    message = "Invitation token is invalid.",
+                    errorCode = GlobalErrorCode.INVALID_INVITATION_TOKEN,
+                    status = HttpStatus.BAD_REQUEST,
+                )
+
+        if (invitation.used) {
+            throw InvalidTokenException(
+                message = "Invitation has already been accepted.",
+                errorCode = GlobalErrorCode.INVITATION_ALREADY_ACCEPTED,
+                status = HttpStatus.BAD_REQUEST,
+            )
+        }
+
+        if (invitation.expiresAt.isBefore(Instant.now(clock))) {
+            throw InvalidTokenException(
+                message = "Invitation token has expired.",
+                errorCode = GlobalErrorCode.INVITATION_TOKEN_EXPIRED,
+                status = HttpStatus.BAD_REQUEST,
+            )
+        }
+
+        return invitation
+    }
+}

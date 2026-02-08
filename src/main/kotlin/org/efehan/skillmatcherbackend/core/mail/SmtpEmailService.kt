@@ -1,0 +1,66 @@
+package org.efehan.skillmatcherbackend.core.mail
+
+import org.efehan.skillmatcherbackend.config.properties.MailProperties
+import org.efehan.skillmatcherbackend.persistence.UserModel
+import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.mail.javamail.JavaMailSender
+import org.springframework.mail.javamail.MimeMessageHelper
+import org.springframework.scheduling.annotation.Async
+import org.springframework.stereotype.Service
+
+@Service
+@ConditionalOnProperty(name = ["mail.smtp.enabled"], havingValue = "true")
+class SmtpEmailService(
+    private val javaMailSender: JavaMailSender,
+    private val templateService: TemplateService,
+    private val mailProperties: MailProperties,
+) : EmailService {
+    private val logger = LoggerFactory.getLogger(SmtpEmailService::class.java)
+
+    @Async
+    override fun sendInvitationEmail(
+        user: UserModel,
+        invitationToken: String,
+        expirationHours: Long,
+    ) {
+        try {
+            val invitationLink = "${mailProperties.baseUrl}/invitations/accept?token=$invitationToken"
+            val htmlContent =
+                templateService.renderInvitation(
+                    firstName = user.firstName ?: "User",
+                    invitationLink = invitationLink,
+                    expirationHours = expirationHours,
+                )
+            send(user.email, "You have been invited to Skill Matcher", htmlContent)
+        } catch (ex: Exception) {
+            logger.error("Failed to send invitation email to={}", user.email, ex)
+        }
+    }
+
+    @Async
+    override fun sendWelcomeEmail(user: UserModel) {
+        try {
+            val htmlContent = templateService.renderWelcome(firstName = user.firstName ?: "User")
+            send(user.email, "Welcome to Skill Matcher", htmlContent)
+        } catch (ex: Exception) {
+            logger.error("Failed to send welcome email to={}", user.email, ex)
+        }
+    }
+
+    private fun send(
+        to: String,
+        subject: String,
+        htmlBody: String,
+    ) {
+        val message = javaMailSender.createMimeMessage()
+        val helper = MimeMessageHelper(message, true, "UTF-8")
+        helper.setFrom(mailProperties.from)
+        helper.setTo(to)
+        helper.setSubject(subject)
+        helper.setText(htmlBody, true)
+
+        javaMailSender.send(message)
+        logger.info("Email sent to={} subject={}", to, subject)
+    }
+}

@@ -30,6 +30,8 @@ dependencies {
     implementation(libs.jackson.module.kotlin)
     implementation(libs.spring.boot.starter.security)
     implementation(libs.spring.boot.starter.validation)
+    implementation(libs.spring.boot.starter.mail)
+    implementation(libs.spring.boot.starter.thymeleaf)
     implementation(libs.springdoc.openapi.starter.webmvc.ui)
     implementation(libs.jjwt.api)
     implementation(libs.jjwt.impl)

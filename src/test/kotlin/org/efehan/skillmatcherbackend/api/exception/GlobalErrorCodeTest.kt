@@ -28,9 +28,15 @@ class GlobalErrorCodeTest {
     val expectedUserNotFoundErrorCode = "USER_NOT_FOUND"
     val expectedRefreshTokenNotFoundErrorCode = "REFRESH_TOKEN_NOT_FOUND"
 
+    // Invitation
+    val expectedInvalidInvitationTokenErrorCode = "INVALID_INVITATION_TOKEN"
+    val expectedInvitationAlreadyAcceptedErrorCode = "INVITATION_ALREADY_ACCEPTED"
+    val expectedInvitationTokenExpiredErrorCode = "INVITATION_TOKEN_EXPIRED"
+
     // User state
     val expectedUserInvalidOperationErrorCode = "USER_INVALID_OPERATION"
     val expectedAccountDisabledErrorCode = "ACCOUNT_DISABLED"
+    val expectedMustChangePasswordErrorCode = "MUST_CHANGE_PASSWORD"
 
     // General
     val expectedInternalServerErrorCode = "INTERNAL_SERVER_ERROR"
@@ -58,14 +64,20 @@ class GlobalErrorCodeTest {
         assertThat(expectedUserNotFoundErrorCode).isEqualTo(GlobalErrorCode.USER_NOT_FOUND.name)
         assertThat(expectedRefreshTokenNotFoundErrorCode).isEqualTo(GlobalErrorCode.REFRESH_TOKEN_NOT_FOUND.name)
 
+        // Invitation
+        assertThat(expectedInvalidInvitationTokenErrorCode).isEqualTo(GlobalErrorCode.INVALID_INVITATION_TOKEN.name)
+        assertThat(expectedInvitationAlreadyAcceptedErrorCode).isEqualTo(GlobalErrorCode.INVITATION_ALREADY_ACCEPTED.name)
+        assertThat(expectedInvitationTokenExpiredErrorCode).isEqualTo(GlobalErrorCode.INVITATION_TOKEN_EXPIRED.name)
+
         // User state
         assertThat(expectedUserInvalidOperationErrorCode).isEqualTo(GlobalErrorCode.USER_INVALID_OPERATION.name)
         assertThat(expectedAccountDisabledErrorCode).isEqualTo(GlobalErrorCode.ACCOUNT_DISABLED.name)
+        assertThat(expectedMustChangePasswordErrorCode).isEqualTo(GlobalErrorCode.MUST_CHANGE_PASSWORD.name)
 
         // General
         assertThat(expectedInternalServerErrorCode).isEqualTo(GlobalErrorCode.INTERNAL_SERVER_ERROR.name)
 
-        assertThat(GlobalErrorCode.entries.size).isEqualTo(16)
+        assertThat(GlobalErrorCode.entries.size).isEqualTo(20)
     }
 
     @Test

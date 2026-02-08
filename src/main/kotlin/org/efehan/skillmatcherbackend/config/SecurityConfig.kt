@@ -36,6 +36,8 @@ class SecurityConfig(
                     .requestMatchers(
                         "/api/auth/login",
                         "/api/auth/refresh",
+                        "/api/auth/invitations/validate",
+                        "/api/auth/invitations/accept",
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
                     ).permitAll()

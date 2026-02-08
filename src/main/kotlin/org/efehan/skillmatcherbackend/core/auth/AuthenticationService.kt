@@ -55,13 +55,14 @@ class AuthenticationService(
         val accessToken = jwtService.generateAccessToken(user)
 
         val refreshToken = jwtService.generateOpaqueRefreshToken()
+        val refreshTokenHash = jwtService.hashToken(refreshToken)
 
         val refreshTokenExpiration = Instant.now(clock).plusMillis(jwtProperties.refreshTokenExpiration)
         val accessTokenExpiration = jwtProperties.accessTokenExpiration
 
         val refreshTokenModel =
             RefreshTokenModel(
-                token = refreshToken,
+                tokenHash = refreshTokenHash,
                 user = user,
                 expiresAt = refreshTokenExpiration,
                 revoked = false,
@@ -78,12 +79,13 @@ class AuthenticationService(
         )
     }
 
-    fun refreshToken(token: String): AuthResponse {
+    fun refreshToken(rawToken: String): AuthResponse {
+        val tokenHash = jwtService.hashToken(rawToken)
         val existingToken =
-            refreshTokenRepository.findByToken(token) ?: throw EntryNotFoundException(
+            refreshTokenRepository.findByTokenHash(tokenHash) ?: throw EntryNotFoundException(
                 resource = "RefreshToken",
                 field = "token",
-                value = token,
+                value = rawToken,
                 errorCode = GlobalErrorCode.REFRESH_TOKEN_NOT_FOUND,
                 status = HttpStatus.BAD_REQUEST,
             )
@@ -103,7 +105,7 @@ class AuthenticationService(
             if (daysRemaining < REFRESH_ROTATION_THRESHOLD_DAYS) {
                 rotateRefreshToken(existingToken)
             } else {
-                existingToken.token
+                rawToken
             }
 
         return AuthResponse(
@@ -123,9 +125,10 @@ class AuthenticationService(
         oldToken.revoked = true
 
         val newToken = jwtService.generateOpaqueRefreshToken()
+        val newTokenHash = jwtService.hashToken(newToken)
         refreshTokenRepository.save(
             RefreshTokenModel(
-                token = newToken,
+                tokenHash = newTokenHash,
                 user = oldToken.user,
                 expiresAt = Instant.now(clock).plusMillis(jwtProperties.refreshTokenExpiration),
             ),

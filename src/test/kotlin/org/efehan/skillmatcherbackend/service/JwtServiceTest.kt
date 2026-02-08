@@ -23,7 +23,6 @@ import java.time.Instant
 import java.time.ZoneOffset
 import java.util.Base64
 import java.util.Date
-import java.util.UUID
 
 class JwtServiceTest {
     private lateinit var jwtService: JwtService
@@ -54,6 +53,7 @@ class JwtServiceTest {
                 accessTokenExpiration = ACCESS_TOKEN_EXPIRATION,
                 refreshTokenExpiration = REFRESH_TOKEN_EXPIRATION,
                 issuer = ISSUER,
+                refreshTokenSecret = "test-hmac-secret-key",
             )
 
         jwtService = JwtService(jwtProperties, fixedClock)
@@ -124,6 +124,7 @@ class JwtServiceTest {
                 accessTokenExpiration = 1_000L, // 1 second
                 refreshTokenExpiration = REFRESH_TOKEN_EXPIRATION,
                 issuer = ISSUER,
+                refreshTokenSecret = "test-hmac-secret-key",
             )
         val expiredService = JwtService(expiredJwtProperties, expiredClock)
         val token = expiredService.generateAccessToken(testUser)
@@ -153,6 +154,7 @@ class JwtServiceTest {
                 accessTokenExpiration = ACCESS_TOKEN_EXPIRATION,
                 refreshTokenExpiration = REFRESH_TOKEN_EXPIRATION,
                 issuer = "wrong-issuer",
+                refreshTokenSecret = "test-hmac-secret-key",
             )
         val wrongIssuerService = JwtService(wrongIssuerProperties, fixedClock)
         val token = wrongIssuerService.generateAccessToken(testUser)
@@ -172,6 +174,7 @@ class JwtServiceTest {
                 accessTokenExpiration = ACCESS_TOKEN_EXPIRATION,
                 refreshTokenExpiration = REFRESH_TOKEN_EXPIRATION,
                 issuer = ISSUER,
+                refreshTokenSecret = "test-hmac-secret-key",
             )
         val otherService = JwtService(otherProperties, fixedClock)
         val token = otherService.generateAccessToken(testUser)
@@ -196,10 +199,12 @@ class JwtServiceTest {
     }
 
     @Test
-    fun `generateOpaqueRefreshToken returns valid UUID`() {
+    fun `generateOpaqueRefreshToken returns 32-byte base64url token`() {
         val token = jwtService.generateOpaqueRefreshToken()
 
-        assertNotNull(UUID.fromString(token))
+        assertNotNull(token)
+        val decoded = Base64.getUrlDecoder().decode(token)
+        assertEquals(32, decoded.size)
     }
 
     @Test

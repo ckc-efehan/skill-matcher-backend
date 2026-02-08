@@ -1,6 +1,7 @@
 package org.efehan.skillmatcherbackend.testcontainers
 
 import org.efehan.skillmatcherbackend.TestcontainersConfiguration
+import org.efehan.skillmatcherbackend.persistence.InvitationTokenRepository
 import org.efehan.skillmatcherbackend.persistence.RefreshTokenRepository
 import org.efehan.skillmatcherbackend.persistence.RoleRepository
 import org.efehan.skillmatcherbackend.persistence.UserRepository
@@ -33,8 +34,12 @@ abstract class AbstractIntegrationTest {
     @Autowired
     protected lateinit var refreshTokenRepository: RefreshTokenRepository
 
+    @Autowired
+    protected lateinit var invitationTokenRepository: InvitationTokenRepository
+
     @BeforeEach
     fun cleanUp() {
+        invitationTokenRepository.deleteAll()
         refreshTokenRepository.deleteAll()
         userRepository.deleteAll()
         roleRepository.deleteAll()

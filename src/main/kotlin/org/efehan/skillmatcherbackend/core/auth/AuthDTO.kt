@@ -2,7 +2,6 @@ package org.efehan.skillmatcherbackend.core.auth
 
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.Size
 
 data class LoginRequest(
     @field:Email(message = "email must be a valid email address")
@@ -32,6 +31,8 @@ data class RefreshTokenRequest(
 )
 
 data class ChangePasswordRequest(
-    @field:NotBlank val oldPassword: String,
-    @field:Size(min = 8) val newPassword: String,
+    @field:NotBlank(message = "oldPassword must not be blank")
+    val oldPassword: String,
+    @field:NotBlank(message = "newPassword must not be blank")
+    val newPassword: String,
 )

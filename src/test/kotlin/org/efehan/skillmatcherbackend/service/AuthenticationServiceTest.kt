@@ -57,6 +57,7 @@ class AuthenticationServiceTest {
         private const val PASSWORD = "Secret-password1"
         private const val ACCESS_TOKEN = "access-token-jwt"
         private const val REFRESH_TOKEN = "refresh-token-uuid"
+        private const val REFRESH_TOKEN_HASH = "hashed-refresh-token"
         private const val ACCESS_TOKEN_EXPIRATION = 900_000L
         private const val REFRESH_TOKEN_EXPIRATION = 604_800_000L
         private val FIXED_INSTANT: Instant = Instant.parse("2025-01-01T12:00:00Z")
@@ -107,6 +108,7 @@ class AuthenticationServiceTest {
         every { authenticationManager.authenticate(any()) } returns mockk()
         every { jwtService.generateAccessToken(user) } returns ACCESS_TOKEN
         every { jwtService.generateOpaqueRefreshToken() } returns REFRESH_TOKEN
+        every { jwtService.hashToken(REFRESH_TOKEN) } returns REFRESH_TOKEN_HASH
         every { refreshTokenRepository.save(any()) } returnsArgument 0
 
         // when
@@ -133,6 +135,7 @@ class AuthenticationServiceTest {
         every { authenticationManager.authenticate(any()) } returns mockk()
         every { jwtService.generateAccessToken(user) } returns ACCESS_TOKEN
         every { jwtService.generateOpaqueRefreshToken() } returns REFRESH_TOKEN
+        every { jwtService.hashToken(REFRESH_TOKEN) } returns REFRESH_TOKEN_HASH
         every { refreshTokenRepository.save(capture(tokenSlot)) } returnsArgument 0
 
         // when
@@ -140,7 +143,7 @@ class AuthenticationServiceTest {
 
         // then
         val saved = tokenSlot.captured
-        assertThat(saved.token).isEqualTo(REFRESH_TOKEN)
+        assertThat(saved.tokenHash).isEqualTo(REFRESH_TOKEN_HASH)
         assertThat(saved.user).isEqualTo(user)
         assertThat(saved.expiresAt).isEqualTo(FIXED_INSTANT.plusMillis(REFRESH_TOKEN_EXPIRATION))
         assertThat(saved.revoked).isFalse()
@@ -155,6 +158,7 @@ class AuthenticationServiceTest {
         every { authenticationManager.authenticate(any()) } returns mockk()
         every { jwtService.generateAccessToken(user) } returns ACCESS_TOKEN
         every { jwtService.generateOpaqueRefreshToken() } returns REFRESH_TOKEN
+        every { jwtService.hashToken(REFRESH_TOKEN) } returns REFRESH_TOKEN_HASH
         every { refreshTokenRepository.save(any()) } returnsArgument 0
 
         // when
@@ -227,13 +231,13 @@ class AuthenticationServiceTest {
     }
 
     private fun buildRefreshTokenModel(
-        token: String = REFRESH_TOKEN,
+        tokenHash: String = REFRESH_TOKEN_HASH,
         user: UserModel = buildTestUser(),
         expiresAt: Instant = FIXED_INSTANT.plus(7, ChronoUnit.DAYS),
         revoked: Boolean = false,
     ): RefreshTokenModel =
         RefreshTokenModel(
-            token = token,
+            tokenHash = tokenHash,
             user = user,
             expiresAt = expiresAt,
             revoked = revoked,
@@ -245,7 +249,8 @@ class AuthenticationServiceTest {
         val user = buildTestUser()
         val existingToken = buildRefreshTokenModel(user = user)
 
-        every { refreshTokenRepository.findByToken(REFRESH_TOKEN) } returns existingToken
+        every { jwtService.hashToken(REFRESH_TOKEN) } returns REFRESH_TOKEN_HASH
+        every { refreshTokenRepository.findByTokenHash(REFRESH_TOKEN_HASH) } returns existingToken
         every { jwtService.generateAccessToken(user) } returns ACCESS_TOKEN
 
         // when
@@ -262,7 +267,8 @@ class AuthenticationServiceTest {
     @Test
     fun `refreshToken throws EntryNotFoundException when token not found`() {
         // given
-        every { refreshTokenRepository.findByToken("unknown-token") } returns null
+        every { jwtService.hashToken("unknown-token") } returns "unknown-token-hash"
+        every { refreshTokenRepository.findByTokenHash("unknown-token-hash") } returns null
 
         // then
         assertThatThrownBy {
@@ -281,7 +287,8 @@ class AuthenticationServiceTest {
         // given
         val revokedToken = buildRefreshTokenModel(revoked = true)
 
-        every { refreshTokenRepository.findByToken(REFRESH_TOKEN) } returns revokedToken
+        every { jwtService.hashToken(REFRESH_TOKEN) } returns REFRESH_TOKEN_HASH
+        every { refreshTokenRepository.findByTokenHash(REFRESH_TOKEN_HASH) } returns revokedToken
 
         // then
         assertThatThrownBy {
@@ -303,7 +310,8 @@ class AuthenticationServiceTest {
                 expiresAt = FIXED_INSTANT.minus(1, ChronoUnit.HOURS),
             )
 
-        every { refreshTokenRepository.findByToken(REFRESH_TOKEN) } returns expiredToken
+        every { jwtService.hashToken(REFRESH_TOKEN) } returns REFRESH_TOKEN_HASH
+        every { refreshTokenRepository.findByTokenHash(REFRESH_TOKEN_HASH) } returns expiredToken
 
         // then
         assertThatThrownBy {
@@ -327,7 +335,8 @@ class AuthenticationServiceTest {
                 expiresAt = FIXED_INSTANT.plus(5, ChronoUnit.DAYS),
             )
 
-        every { refreshTokenRepository.findByToken(REFRESH_TOKEN) } returns existingToken
+        every { jwtService.hashToken(REFRESH_TOKEN) } returns REFRESH_TOKEN_HASH
+        every { refreshTokenRepository.findByTokenHash(REFRESH_TOKEN_HASH) } returns existingToken
         every { jwtService.generateAccessToken(user) } returns ACCESS_TOKEN
 
         // when
@@ -345,6 +354,7 @@ class AuthenticationServiceTest {
         // given - token expires in 1 day (below 2-day threshold)
         val user = buildTestUser()
         val newRefreshToken = "new-refresh-token-uuid"
+        val newRefreshTokenHash = "new-hashed-refresh-token"
         val existingToken =
             buildRefreshTokenModel(
                 user = user,
@@ -352,9 +362,11 @@ class AuthenticationServiceTest {
             )
         val tokenSlot = slot<RefreshTokenModel>()
 
-        every { refreshTokenRepository.findByToken(REFRESH_TOKEN) } returns existingToken
+        every { jwtService.hashToken(REFRESH_TOKEN) } returns REFRESH_TOKEN_HASH
+        every { refreshTokenRepository.findByTokenHash(REFRESH_TOKEN_HASH) } returns existingToken
         every { jwtService.generateAccessToken(user) } returns ACCESS_TOKEN
         every { jwtService.generateOpaqueRefreshToken() } returns newRefreshToken
+        every { jwtService.hashToken(newRefreshToken) } returns newRefreshTokenHash
         every { refreshTokenRepository.save(capture(tokenSlot)) } returnsArgument 0
 
         // when
@@ -365,13 +377,11 @@ class AuthenticationServiceTest {
         assertThat(existingToken.revoked).isTrue()
 
         val saved = tokenSlot.captured
-        assertThat(saved.token).isEqualTo(newRefreshToken)
+        assertThat(saved.tokenHash).isEqualTo(newRefreshTokenHash)
         assertThat(saved.user).isEqualTo(user)
         assertThat(saved.expiresAt).isEqualTo(FIXED_INSTANT.plusMillis(REFRESH_TOKEN_EXPIRATION))
         assertThat(saved.revoked).isFalse()
     }
-
-    // --- logout tests ---
 
     @Test
     fun `logout revokes all user tokens`() {

@@ -8,7 +8,9 @@ import org.efehan.skillmatcherbackend.config.properties.JwtProperties
 import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.shared.exceptions.InvalidTokenException
 import org.springframework.stereotype.Service
+import java.nio.charset.StandardCharsets
 import java.security.KeyFactory
+import java.security.SecureRandom
 import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey
 import java.security.spec.PKCS8EncodedKeySpec
@@ -16,7 +18,8 @@ import java.security.spec.X509EncodedKeySpec
 import java.time.Clock
 import java.util.Base64
 import java.util.Date
-import java.util.UUID
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 @Service
 class JwtService(
@@ -25,6 +28,7 @@ class JwtService(
 ) {
     private val privateKey: RSAPrivateKey by lazy { loadPrivateKey() }
     private val publicKey: RSAPublicKey by lazy { loadPublicKey() }
+    private val secureRandom = SecureRandom()
 
     private val jwtParser: JwtParser by lazy {
         Jwts
@@ -49,7 +53,30 @@ class JwtService(
             .compact()
     }
 
-    fun generateOpaqueRefreshToken(): String = UUID.randomUUID().toString()
+    private val hmacKey =
+        SecretKeySpec(
+            jwtProperties.refreshTokenSecret.toByteArray(StandardCharsets.UTF_8),
+            "HmacSHA256",
+        )
+
+    fun generateOpaqueRefreshToken(): String {
+        val bytes = ByteArray(32) // 256 bit
+        secureRandom.nextBytes(bytes)
+        return Base64
+            .getUrlEncoder()
+            .withoutPadding()
+            .encodeToString(bytes)
+    }
+
+    fun hashToken(token: String): String {
+        val mac = Mac.getInstance("HmacSHA256")
+        mac.init(hmacKey)
+        val raw =
+            mac.doFinal(
+                token.toByteArray(StandardCharsets.UTF_8),
+            )
+        return Base64.getEncoder().encodeToString(raw)
+    }
 
     fun validateToken(token: String): Claims =
         try {

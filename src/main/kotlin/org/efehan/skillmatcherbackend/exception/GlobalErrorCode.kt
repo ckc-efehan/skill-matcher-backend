@@ -24,9 +24,15 @@ enum class GlobalErrorCode(
     USER_NOT_FOUND("User could not be found."),
     REFRESH_TOKEN_NOT_FOUND("Refresh token could not be found."),
 
+    // Invitation
+    INVALID_INVITATION_TOKEN("Invitation token is invalid."),
+    INVITATION_ALREADY_ACCEPTED("Invitation has already been accepted."),
+    INVITATION_TOKEN_EXPIRED("Invitation token has expired."),
+
     // User state
     USER_INVALID_OPERATION("Current user state does not allow this operation."),
     ACCOUNT_DISABLED("Account is disabled."),
+    MUST_CHANGE_PASSWORD("Password change required."),
 
     // General
     INTERNAL_SERVER_ERROR("An unexpected error occurred."),
