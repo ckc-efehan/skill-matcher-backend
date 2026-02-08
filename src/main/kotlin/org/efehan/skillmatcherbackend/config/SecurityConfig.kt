@@ -1,6 +1,6 @@
 package org.efehan.skillmatcherbackend.config
 
-import org.efehan.skillmatcherbackend.config.security.JwtAuthenticationFilter
+import org.efehan.skillmatcherbackend.config.filter.JwtAuthenticationFilter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Lazy

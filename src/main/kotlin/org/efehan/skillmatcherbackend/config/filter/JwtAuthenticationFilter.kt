@@ -1,4 +1,4 @@
-package org.efehan.skillmatcherbackend.config.security
+package org.efehan.skillmatcherbackend.config.filter
 
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
