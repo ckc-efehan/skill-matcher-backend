@@ -115,6 +115,10 @@ class AuthenticationService(
         )
     }
 
+    fun logout(userId: String) {
+        refreshTokenRepository.revokeAllUserTokens(userId)
+    }
+
     private fun rotateRefreshToken(oldToken: RefreshTokenModel): String {
         oldToken.revoked = true
 

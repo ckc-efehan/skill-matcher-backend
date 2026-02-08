@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCodeResponse
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -237,4 +238,36 @@ class AuthenticationController(
         ResponseEntity.ok(
             authenticationService.refreshToken(request.refreshToken),
         )
+
+    @Operation(
+        summary = "Logout user",
+        method = "POST",
+        description = "Revokes all refresh tokens for the authenticated user.",
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "204",
+                description = "Logout successful.",
+                content = [Content()],
+            ),
+            ApiResponse(
+                responseCode = "401",
+                description = "Not authenticated.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                    ),
+                ],
+            ),
+        ],
+    )
+    @PostMapping("/logout")
+    fun logout(
+        @AuthenticationPrincipal securityUser: SecurityUser,
+    ): ResponseEntity<Void> {
+        authenticationService.logout(securityUser.user.id)
+        return ResponseEntity.noContent().build()
+    }
 }

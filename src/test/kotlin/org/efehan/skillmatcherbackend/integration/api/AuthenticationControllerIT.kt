@@ -1,5 +1,7 @@
 package org.efehan.skillmatcherbackend.integration.api
 
+import org.assertj.core.api.Assertions.assertThat
+import org.efehan.skillmatcherbackend.core.auth.JwtService
 import org.efehan.skillmatcherbackend.core.auth.LoginRequest
 import org.efehan.skillmatcherbackend.core.auth.RefreshTokenRequest
 import org.efehan.skillmatcherbackend.persistence.RefreshTokenModel
@@ -18,6 +20,9 @@ import java.time.temporal.ChronoUnit
 class AuthenticationControllerIT : AbstractIntegrationTest() {
     @Autowired
     private lateinit var passwordEncoder: PasswordEncoder
+
+    @Autowired
+    private lateinit var jwtService: JwtService
 
     @Test
     fun `should login successfully when valid credentials provided`() {
@@ -295,6 +300,66 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
             }.andExpect {
                 status { isUnauthorized() }
                 jsonPath("$.errorCode") { value("INVALID_REFRESH_TOKEN") }
+            }
+    }
+
+    // --- logout tests ---
+
+    private fun createAuthenticatedUser(): Pair<UserModel, String> {
+        val role = roleRepository.save(RoleModel("ADMIN", null))
+        val user =
+            UserModel(
+                username = "testuser",
+                email = "test@example.com",
+                passwordHash = passwordEncoder.encode("Secret-Password1!"),
+                firstName = "Test",
+                lastName = "User",
+                role = role,
+            )
+        user.isEnabled = true
+        userRepository.save(user)
+        val accessToken = jwtService.generateAccessToken(user)
+        return user to accessToken
+    }
+
+    @Test
+    fun `should logout successfully and revoke all refresh tokens`() {
+        // given
+        val (user, accessToken) = createAuthenticatedUser()
+        refreshTokenRepository.save(
+            RefreshTokenModel(
+                token = "token-1",
+                user = user,
+                expiresAt = Instant.now().plus(7, ChronoUnit.DAYS),
+            ),
+        )
+        refreshTokenRepository.save(
+            RefreshTokenModel(
+                token = "token-2",
+                user = user,
+                expiresAt = Instant.now().plus(7, ChronoUnit.DAYS),
+            ),
+        )
+
+        // when & then
+        mockMvc
+            .post("/api/auth/logout") {
+                header("Authorization", "Bearer $accessToken")
+            }.andExpect {
+                status { isNoContent() }
+            }
+
+        val tokens = refreshTokenRepository.findAll()
+        assertThat(tokens).allMatch { it.revoked }
+    }
+
+    @Test
+    fun `should return 401 when logout without authentication`() {
+        // when & then
+        mockMvc
+            .post("/api/auth/logout")
+            .andExpect {
+                status { isUnauthorized() }
             }
     }
 }

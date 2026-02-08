@@ -370,4 +370,32 @@ class AuthenticationServiceTest {
         assertThat(saved.expiresAt).isEqualTo(FIXED_INSTANT.plusMillis(REFRESH_TOKEN_EXPIRATION))
         assertThat(saved.revoked).isFalse()
     }
+
+    // --- logout tests ---
+
+    @Test
+    fun `logout revokes all user tokens`() {
+        // given
+        val userId = "user-id-123"
+        every { refreshTokenRepository.revokeAllUserTokens(userId) } returns 3
+
+        // when
+        authenticationService.logout(userId)
+
+        // then
+        verify(exactly = 1) { refreshTokenRepository.revokeAllUserTokens(userId) }
+    }
+
+    @Test
+    fun `logout succeeds even when user has no tokens`() {
+        // given
+        val userId = "user-id-123"
+        every { refreshTokenRepository.revokeAllUserTokens(userId) } returns 0
+
+        // when
+        authenticationService.logout(userId)
+
+        // then
+        verify(exactly = 1) { refreshTokenRepository.revokeAllUserTokens(userId) }
+    }
 }
