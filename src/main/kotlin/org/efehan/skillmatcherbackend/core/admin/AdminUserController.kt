@@ -92,6 +92,16 @@ class AdminUserController(
                 ],
             ),
             ApiResponse(
+                responseCode = "401",
+                description = "Not authenticated.",
+                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "Not authorized. Admin role required.",
+                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+            ),
+            ApiResponse(
                 responseCode = "409",
                 description = "User with this email already exists.",
                 content = [
@@ -138,6 +148,16 @@ class AdminUserController(
                 content = [Content()],
             ),
             ApiResponse(
+                responseCode = "401",
+                description = "Not authenticated.",
+                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "Not authorized. Admin role required.",
+                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+            ),
+            ApiResponse(
                 responseCode = "404",
                 description = "User not found.",
                 content = [
@@ -157,6 +177,30 @@ class AdminUserController(
         return ResponseEntity.noContent().build()
     }
 
+    @Operation(
+        summary = "Update user status",
+        description = "Enables or disables a user account. Only accessible by admins.",
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(responseCode = "204", description = "Status updated.", content = [Content()]),
+            ApiResponse(
+                responseCode = "401",
+                description = "Not authenticated.",
+                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "Not authorized. Admin role required.",
+                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "User not found.",
+                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+            ),
+        ],
+    )
     @PatchMapping("/{userId}/status")
     fun updateUserStatus(
         @PathVariable
@@ -180,6 +224,16 @@ class AdminUserController(
                 responseCode = "200",
                 description = "Users retrieved successfully.",
             ),
+            ApiResponse(
+                responseCode = "401",
+                description = "Not authenticated.",
+                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "Not authorized. Admin role required.",
+                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+            ),
         ],
     )
     @GetMapping
@@ -196,6 +250,16 @@ class AdminUserController(
                 responseCode = "204",
                 description = "Role updated successfully.",
                 content = [Content()],
+            ),
+            ApiResponse(
+                responseCode = "401",
+                description = "Not authenticated.",
+                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "Not authorized. Admin role required.",
+                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
             ),
             ApiResponse(
                 responseCode = "404",

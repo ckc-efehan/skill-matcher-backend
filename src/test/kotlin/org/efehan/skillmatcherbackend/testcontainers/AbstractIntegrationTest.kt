@@ -5,7 +5,9 @@ import org.efehan.skillmatcherbackend.persistence.InvitationTokenRepository
 import org.efehan.skillmatcherbackend.persistence.PasswordResetTokenRepository
 import org.efehan.skillmatcherbackend.persistence.RefreshTokenRepository
 import org.efehan.skillmatcherbackend.persistence.RoleRepository
+import org.efehan.skillmatcherbackend.persistence.SkillRepository
 import org.efehan.skillmatcherbackend.persistence.UserRepository
+import org.efehan.skillmatcherbackend.persistence.UserSkillRepository
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -43,8 +45,16 @@ abstract class AbstractIntegrationTest {
     @Autowired
     protected lateinit var passwordResetTokenRepository: PasswordResetTokenRepository
 
+    @Autowired
+    protected lateinit var userSkillRepository: UserSkillRepository
+
+    @Autowired
+    protected lateinit var skillRepository: SkillRepository
+
     @BeforeEach
     fun cleanUp() {
+        userSkillRepository.deleteAll()
+        skillRepository.deleteAll()
         passwordResetTokenRepository.deleteAll()
         invitationTokenRepository.deleteAll()
         refreshTokenRepository.deleteAll()
