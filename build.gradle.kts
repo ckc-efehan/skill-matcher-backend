@@ -28,16 +28,27 @@ dependencies {
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.module.kotlin)
+    implementation(libs.spring.boot.starter.security)
+    implementation(libs.spring.boot.starter.validation)
+    implementation(libs.spring.boot.starter.mail)
+    implementation(libs.spring.boot.starter.thymeleaf)
+    implementation(libs.springdoc.openapi.starter.webmvc.ui)
+    implementation(libs.jjwt.api)
+    implementation(libs.jjwt.impl)
+    implementation(libs.jjwt.jackson)
     developmentOnly(libs.spring.boot.devtools)
     runtimeOnly(libs.postgresql)
     testImplementation(platform(libs.testcontainers.bom))
     testImplementation(libs.spring.boot.starter.data.jpa.test)
     testImplementation(libs.spring.boot.starter.liquibase.test)
     testImplementation(libs.spring.boot.starter.webmvc.test)
+    testImplementation(libs.spring.boot.starter.security.test)
     testImplementation(libs.spring.boot.testcontainers)
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.kotlin.test.junit5)
+    testImplementation(libs.mockk)
+    testImplementation(libs.assertj)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
@@ -64,6 +75,16 @@ tasks.jacocoTestReport {
         html.required.set(true)
         xml.required.set(true)
     }
+    classDirectories.setFrom(
+        classDirectories.files.map {
+            fileTree(it) {
+                exclude(
+                    "**/SkillMatcherBackendApplicationKt.class",
+                    "**/persistence/*Model.class",
+                )
+            }
+        },
+    )
 }
 
 tasks.jacocoTestCoverageVerification {
