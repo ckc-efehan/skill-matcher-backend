@@ -55,5 +55,4 @@ class SecurityConfig(
 
     @Bean
     fun clock(): Clock = Clock.systemUTC()
-
 }

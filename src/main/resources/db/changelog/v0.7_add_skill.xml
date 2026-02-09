@@ -28,15 +28,19 @@
             <column name="created_by" type="VARCHAR(255)"/>
             <column name="last_modified_by" type="VARCHAR(255)"/>
             <column name="last_modified_date" type="DATETIME"/>
-            <column name="user_id" type="VARCHAR(255)"/>
-            <column name="skill_id" type="VARCHAR(255)"/>
+            <column name="user_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="skill_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
             <column name="level" type="INT">
                 <constraints nullable="false"/>
             </column>
         </createTable>
     </changeSet>
     <changeSet id="1770657904825-9" author="efehan">
-        <addUniqueConstraint columnNames="user_id, skill_id" constraintName="uc_1ffd8a18ebe5bc399cc5ec08c"
+        <addUniqueConstraint columnNames="user_id, skill_id" constraintName="uc_user_skills_user_id_skill_id"
                              tableName="user_skills"/>
     </changeSet>
     <changeSet id="1770657904825-10" author="efehan">

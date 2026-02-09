@@ -17,11 +17,11 @@ import org.springframework.stereotype.Repository
     ],
 )
 class UserSkillModel(
-    @ManyToOne
-    @JoinColumn(name = "user_id")
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
     val user: UserModel,
-    @ManyToOne
-    @JoinColumn(name = "skill_id")
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "skill_id", nullable = false)
     val skill: SkillModel,
     @Column(nullable = false)
     var level: Int,

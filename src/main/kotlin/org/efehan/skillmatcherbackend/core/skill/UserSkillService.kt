@@ -8,8 +8,10 @@ import org.efehan.skillmatcherbackend.persistence.UserSkillRepository
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
+@Transactional
 class UserSkillService(
     private val skillRepo: SkillRepository,
     private val userSkillRepo: UserSkillRepository,
