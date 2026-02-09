@@ -12,6 +12,8 @@ import org.efehan.skillmatcherbackend.core.invitation.InvitationService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCodeResponse
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -152,6 +154,69 @@ class AdminUserController(
         @PathVariable userId: String,
     ): ResponseEntity<Void> {
         invitationService.resendInvitation(userId)
+        return ResponseEntity.noContent().build()
+    }
+
+    @PatchMapping("/{userId}/status")
+    fun updateUserStatus(
+        @PathVariable
+        userId: String,
+        @Valid
+        @RequestBody
+        request: UpdateUserStatusRequest,
+    ): ResponseEntity<Unit> {
+        adminUserService.updateUserStatus(userId, request.enabled)
+        return ResponseEntity.noContent().build()
+    }
+
+    @Operation(
+        summary = "List all users",
+        method = "GET",
+        description = "Returns a list of all users. Only accessible by admins.",
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Users retrieved successfully.",
+            ),
+        ],
+    )
+    @GetMapping
+    fun listUsers(): ResponseEntity<List<AdminUserListResponse>> = ResponseEntity.ok(adminUserService.listUsers())
+
+    @Operation(
+        summary = "Update user role",
+        method = "PATCH",
+        description = "Changes the role of a user. Only accessible by admins.",
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "204",
+                description = "Role updated successfully.",
+                content = [Content()],
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "User or role not found.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                    ),
+                ],
+            ),
+        ],
+    )
+    @PatchMapping("/{userId}/role")
+    fun updateUserRole(
+        @PathVariable userId: String,
+        @Valid
+        @RequestBody
+        request: UpdateUserRoleRequest,
+    ): ResponseEntity<Unit> {
+        adminUserService.updateUserRole(userId, request.role)
         return ResponseEntity.noContent().build()
     }
 }
