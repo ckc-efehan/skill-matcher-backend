@@ -12,6 +12,7 @@ build/
 .project
 .settings
 .springBeans
+CLAUDE.md
 .sts4-cache
 bin/
 !**/src/main/**/bin/
@@ -31,6 +32,7 @@ out/
 /nbbuild/
 /dist/
 /nbdist/
+.claude
 /.nb-gradle/
 
 ### VS Code ###
@@ -38,8 +40,6 @@ out/
 
 ### Kotlin ###
 .kotlin
-
-.claude
 
 ### JWT Keys ###
 src/main/resources/keys/
