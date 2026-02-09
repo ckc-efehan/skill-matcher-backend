@@ -83,6 +83,8 @@ class JwtService(
             jwtParser.parseSignedClaims(token).payload
         } catch (ex: JwtException) {
             throw InvalidTokenException("Invalid JWT", ex)
+        } catch (ex: IllegalArgumentException) {
+            throw InvalidTokenException("Invalid JWT", ex)
         }
 
     fun getEmail(token: String): String = validateToken(token).subject

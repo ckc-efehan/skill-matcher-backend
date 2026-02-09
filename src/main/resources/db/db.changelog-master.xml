@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!--
-  # Fahrschule - Database Schema
+  # Skill Matcher - Database Schema
   # Version: 0.0.1
   # Author: Efehan Cekic
-  # Description: Master changelog file for the Fahrschule platform service database schema
+  # Description: Master changelog file for the Skill Matcher platform service database schema
   #
   # This file orchestrates the creation of all platform-specific database tables and constraints
   # in the proper dependency order to ensure referential integrity.

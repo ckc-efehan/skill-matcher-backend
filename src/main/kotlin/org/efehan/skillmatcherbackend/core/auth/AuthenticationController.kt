@@ -270,4 +270,53 @@ class AuthenticationController(
         authenticationService.logout(securityUser.user.id)
         return ResponseEntity.noContent().build()
     }
+
+    @Operation(
+        summary = "Change password",
+        method = "POST",
+        description = "Changes the password for the authenticated user. Revokes all refresh tokens.",
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "204",
+                description = "Password changed successfully.",
+                content = [Content()],
+            ),
+            ApiResponse(
+                responseCode = "401",
+                description = "Current password is incorrect.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "400",
+                description = "New password does not meet requirements.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                    ),
+                ],
+            ),
+        ],
+    )
+    @PostMapping("/change-password")
+    fun changePassword(
+        @AuthenticationPrincipal securityUser: SecurityUser,
+        @Valid
+        @RequestBody
+        request: ChangePasswordRequest,
+    ): ResponseEntity<Void> {
+        authenticationService.changePassword(
+            user = securityUser.user,
+            currentPassword = request.oldPassword,
+            newPassword = request.newPassword,
+        )
+        return ResponseEntity.noContent().build()
+    }
 }

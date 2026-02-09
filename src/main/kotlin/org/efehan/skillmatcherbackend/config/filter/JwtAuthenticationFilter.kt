@@ -50,7 +50,7 @@ class JwtAuthenticationFilter(
     private fun extractBearerToken(request: HttpServletRequest): String? {
         val header = request.getHeader("Authorization")
         if (header != null && header.startsWith("Bearer ")) {
-            return header.substring(7)
+            return header.substring(7).ifBlank { null }
         }
         return null
     }

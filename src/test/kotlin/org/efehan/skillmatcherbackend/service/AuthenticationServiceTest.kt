@@ -11,6 +11,7 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.efehan.skillmatcherbackend.config.properties.JwtProperties
 import org.efehan.skillmatcherbackend.core.auth.AuthenticationService
 import org.efehan.skillmatcherbackend.core.auth.JwtService
+import org.efehan.skillmatcherbackend.core.auth.PasswordValidationService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
 import org.efehan.skillmatcherbackend.persistence.RefreshTokenModel
 import org.efehan.skillmatcherbackend.persistence.RefreshTokenRepository
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.BadCredentialsException
+import org.springframework.security.crypto.password.PasswordEncoder
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -49,6 +51,12 @@ class AuthenticationServiceTest {
 
     @MockK
     private lateinit var jwtProperties: JwtProperties
+
+    @MockK
+    private lateinit var passwordEncoder: PasswordEncoder
+
+    @MockK
+    private lateinit var passwordValidationService: PasswordValidationService
 
     private lateinit var authenticationService: AuthenticationService
 
@@ -77,6 +85,8 @@ class AuthenticationServiceTest {
                 jwtService = jwtService,
                 refreshTokenRepository = refreshTokenRepository,
                 jwtProperties = jwtProperties,
+                passwordEncoder = passwordEncoder,
+                passwordValidationService = passwordValidationService,
                 clock = fixedClock,
             )
     }

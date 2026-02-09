@@ -17,6 +17,7 @@ import org.efehan.skillmatcherbackend.core.mail.EmailService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
 import org.efehan.skillmatcherbackend.persistence.PasswordResetTokenModel
 import org.efehan.skillmatcherbackend.persistence.PasswordResetTokenRepository
+import org.efehan.skillmatcherbackend.persistence.RefreshTokenRepository
 import org.efehan.skillmatcherbackend.persistence.RoleModel
 import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.persistence.UserRepository
@@ -57,6 +58,9 @@ class PasswordResetServiceTest {
     @MockK
     private lateinit var passwordResetProperties: PasswordResetProperties
 
+    @MockK
+    private lateinit var refreshTokenRepository: RefreshTokenRepository
+
     private lateinit var passwordResetService: PasswordResetService
 
     companion object {
@@ -85,6 +89,7 @@ class PasswordResetServiceTest {
                 passwordValidationService = passwordValidationService,
                 passwordResetProperties = passwordResetProperties,
                 clock = fixedClock,
+                refreshTokenRepository = refreshTokenRepository,
             )
     }
 
@@ -312,6 +317,7 @@ class PasswordResetServiceTest {
             every { passwordValidationService.validateOrThrow(NEW_PASSWORD) } just runs
             every { passwordEncoder.encode(NEW_PASSWORD) } returns ENCODED_PASSWORD
             every { userRepository.save(user) } returns user
+            every { refreshTokenRepository.revokeAllUserTokens(user.id) } returns 1
             every { passwordResetTokenRepository.save(resetToken) } returns resetToken
 
             // when
@@ -322,6 +328,7 @@ class PasswordResetServiceTest {
             assertThat(resetToken.used).isTrue()
 
             verify { userRepository.save(user) }
+            verify { refreshTokenRepository.revokeAllUserTokens(user.id) }
             verify { passwordResetTokenRepository.save(resetToken) }
         }
 
@@ -411,6 +418,7 @@ class PasswordResetServiceTest {
             every { passwordValidationService.validateOrThrow(NEW_PASSWORD) } just runs
             every { passwordEncoder.encode(NEW_PASSWORD) } returns ENCODED_PASSWORD
             every { userRepository.save(user) } returns user
+            every { refreshTokenRepository.revokeAllUserTokens(user.id) } returns 1
             every { passwordResetTokenRepository.save(resetToken) } returns resetToken
 
             // when

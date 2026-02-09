@@ -6,6 +6,7 @@ import org.efehan.skillmatcherbackend.core.mail.EmailService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
 import org.efehan.skillmatcherbackend.persistence.PasswordResetTokenModel
 import org.efehan.skillmatcherbackend.persistence.PasswordResetTokenRepository
+import org.efehan.skillmatcherbackend.persistence.RefreshTokenRepository
 import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.shared.exceptions.InvalidTokenException
 import org.slf4j.LoggerFactory
@@ -26,6 +27,7 @@ class PasswordResetService(
     private val passwordValidationService: PasswordValidationService,
     private val passwordResetProperties: PasswordResetProperties,
     private val clock: Clock = Clock.systemUTC(),
+    private val refreshTokenRepository: RefreshTokenRepository,
 ) {
     private val logger = LoggerFactory.getLogger(PasswordResetService::class.java)
 
@@ -130,6 +132,8 @@ class PasswordResetService(
         val user = resetToken.user
         user.passwordHash = passwordEncoder.encode(newPassword)
         userRepository.save(user)
+
+        refreshTokenRepository.revokeAllUserTokens(user.id)
 
         // Mark token as used
         resetToken.used = true

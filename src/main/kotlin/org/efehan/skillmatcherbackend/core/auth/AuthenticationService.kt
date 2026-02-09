@@ -14,6 +14,7 @@ import org.efehan.skillmatcherbackend.shared.exceptions.InvalidTokenException
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.time.Instant
@@ -29,6 +30,8 @@ class AuthenticationService(
     private val jwtService: JwtService,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val jwtProperties: JwtProperties,
+    private val passwordEncoder: PasswordEncoder,
+    private val passwordValidationService: PasswordValidationService,
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun login(
@@ -115,6 +118,23 @@ class AuthenticationService(
             expiresIn = jwtProperties.accessTokenExpiration,
             user = user.toAuthUserResponse(),
         )
+    }
+
+    fun changePassword(
+        user: UserModel,
+        currentPassword: String,
+        newPassword: String,
+    ) {
+        if (!passwordEncoder.matches(currentPassword, user.passwordHash)) {
+            throw InvalidCredentialsException()
+        }
+
+        passwordValidationService.validateOrThrow(newPassword)
+
+        user.passwordHash = passwordEncoder.encode(newPassword)
+        userRepository.save(user)
+
+        refreshTokenRepository.revokeAllUserTokens(user.id)
     }
 
     fun logout(userId: String) {
