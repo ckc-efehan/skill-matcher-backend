@@ -2,6 +2,8 @@ package org.efehan.skillmatcherbackend.core.admin
 
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotNull
+import java.time.Instant
 
 data class CreateUserRequest(
     @field:NotBlank(message = "firstName must not be blank")
@@ -21,5 +23,26 @@ data class CreateUserResponse(
     val email: String,
     val firstName: String,
     val lastName: String,
+    val role: String,
+)
+
+data class UpdateUserStatusRequest(
+    @field:NotNull(message = "isEnabled must not be null")
+    var enabled: Boolean,
+)
+
+data class AdminUserListResponse(
+    val id: String,
+    val username: String?,
+    val email: String,
+    val firstName: String?,
+    val lastName: String?,
+    val role: String,
+    val isEnabled: Boolean,
+    val createdDate: Instant?,
+)
+
+data class UpdateUserRoleRequest(
+    @field:NotBlank(message = "role must not be blank")
     val role: String,
 )

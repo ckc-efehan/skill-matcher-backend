@@ -3,6 +3,7 @@ package org.efehan.skillmatcherbackend.core.admin
 import jakarta.transaction.Transactional
 import org.efehan.skillmatcherbackend.core.invitation.InvitationService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
+import org.efehan.skillmatcherbackend.persistence.RefreshTokenRepository
 import org.efehan.skillmatcherbackend.persistence.RoleRepository
 import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.persistence.UserRepository
@@ -18,6 +19,7 @@ class AdminUserService(
     private val userRepository: UserRepository,
     private val roleRepository: RoleRepository,
     private val invitationService: InvitationService,
+    private val refreshTokenRepository: RefreshTokenRepository,
 ) {
     fun createUser(request: CreateUserRequest): CreateUserResponse {
         if (userRepository.existsByEmail(request.email)) {
@@ -64,6 +66,60 @@ class AdminUserService(
             lastName = savedUser.lastName!!,
             role = role.name,
         )
+    }
+
+    fun updateUserStatus(
+        userId: String,
+        enabled: Boolean,
+    ) {
+        val user =
+            userRepository
+                .findById(userId)
+                .orElseThrow { EntryNotFoundException("User", "id", userId) }
+        user.isEnabled = enabled
+        userRepository.save(user)
+
+        if (!enabled) {
+            refreshTokenRepository.revokeAllUserTokens(userId)
+        }
+    }
+
+    fun listUsers(): List<AdminUserListResponse> =
+        userRepository.findAll().map { user ->
+            AdminUserListResponse(
+                id = user.id,
+                username = user.username,
+                email = user.email,
+                firstName = user.firstName,
+                lastName = user.lastName,
+                role = user.role.name,
+                isEnabled = user.isEnabled,
+                createdDate = user.createdDate,
+            )
+        }
+
+    fun updateUserRole(
+        userId: String,
+        roleName: String,
+    ) {
+        val user =
+            userRepository
+                .findById(userId)
+                .orElseThrow { EntryNotFoundException("User", "id", userId) }
+
+        val role =
+            roleRepository.findByName(roleName.uppercase())
+                ?: throw EntryNotFoundException(
+                    resource = "Role",
+                    field = "name",
+                    value = roleName,
+                    errorCode = GlobalErrorCode.ROLE_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
+
+        user.role = role
+        userRepository.save(user)
+        refreshTokenRepository.revokeAllUserTokens(user.id)
     }
 
     internal fun generateUniqueUsername(
