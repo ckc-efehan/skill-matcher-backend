@@ -2,6 +2,7 @@ package org.efehan.skillmatcherbackend.core.skill
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
@@ -35,22 +36,95 @@ class MySkillController(
             ApiResponse(
                 responseCode = "201",
                 description = "Skill created.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = UserSkillDto::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = UserSkillDto::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Skill created",
+                                value = """
+                                {
+                                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                                    "name": "Kotlin",
+                                    "level": 4
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             ApiResponse(
                 responseCode = "200",
                 description = "Skill level updated.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = UserSkillDto::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = UserSkillDto::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Skill updated",
+                                value = """
+                                {
+                                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                                    "name": "Kotlin",
+                                    "level": 5
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             ApiResponse(
                 responseCode = "400",
                 description = "Validation error.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Validation error",
+                                value = """
+                                {
+                                    "errorCode": "VALIDATION_ERROR",
+                                    "errorMessage": "Request validation failed.",
+                                    "fieldErrors": [
+                                        {
+                                            "field": "level",
+                                            "message": "must be greater than or equal to 1"
+                                        }
+                                    ]
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             ApiResponse(
                 responseCode = "401",
                 description = "Not authenticated.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not authenticated",
+                                value = """
+                                {
+                                    "errorCode": "UNAUTHORIZED",
+                                    "errorMessage": "Not authenticated.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
         ],
     )
@@ -77,7 +151,24 @@ class MySkillController(
             ApiResponse(
                 responseCode = "401",
                 description = "Not authenticated.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not authenticated",
+                                value = """
+                                {
+                                    "errorCode": "UNAUTHORIZED",
+                                    "errorMessage": "Not authenticated.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
         ],
     )
@@ -100,17 +191,68 @@ class MySkillController(
             ApiResponse(
                 responseCode = "401",
                 description = "Not authenticated.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not authenticated",
+                                value = """
+                                {
+                                    "errorCode": "UNAUTHORIZED",
+                                    "errorMessage": "Not authenticated.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             ApiResponse(
                 responseCode = "403",
                 description = "Not allowed to delete this skill.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not allowed",
+                                value = """
+                                {
+                                    "errorCode": "FORBIDDEN",
+                                    "errorMessage": "Not allowed to delete this skill.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             ApiResponse(
                 responseCode = "404",
                 description = "Skill not found.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Skill not found",
+                                value = """
+                                {
+                                    "errorCode": "ENTRY_NOT_FOUND",
+                                    "errorMessage": "UserSkill with id not found.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
         ],
     )

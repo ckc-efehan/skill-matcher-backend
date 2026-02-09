@@ -258,6 +258,18 @@ class AuthenticationController(
                     Content(
                         mediaType = "application/json",
                         schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not authenticated",
+                                value = """
+                                {
+                                    "errorCode": "UNAUTHORIZED",
+                                    "errorMessage": "Not authenticated.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
                     ),
                 ],
             ),
@@ -290,6 +302,18 @@ class AuthenticationController(
                     Content(
                         mediaType = "application/json",
                         schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Wrong password",
+                                value = """
+                                {
+                                    "errorCode": "BAD_CREDENTIALS",
+                                    "errorMessage": "Bad credentials.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
                     ),
                 ],
             ),
@@ -300,6 +324,23 @@ class AuthenticationController(
                     Content(
                         mediaType = "application/json",
                         schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Password validation error",
+                                value = """
+                                {
+                                    "errorCode": "VALIDATION_ERROR",
+                                    "errorMessage": "Password does not meet the required complexity.",
+                                    "fieldErrors": [
+                                        {
+                                            "field": "password",
+                                            "message": "Password must be at least 8 characters long"
+                                        }
+                                    ]
+                                }
+                                """,
+                            ),
+                        ],
                     ),
                 ],
             ),

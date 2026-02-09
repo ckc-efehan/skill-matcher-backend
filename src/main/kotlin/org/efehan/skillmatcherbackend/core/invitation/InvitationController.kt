@@ -2,6 +2,7 @@ package org.efehan.skillmatcherbackend.core.invitation
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
@@ -37,6 +38,17 @@ class InvitationController(
                     Content(
                         mediaType = "application/json",
                         schema = Schema(implementation = ValidateInvitationResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Valid token",
+                                value = """
+                                {
+                                    "valid": true,
+                                    "email": "max.mustermann@firma.de"
+                                }
+                                """,
+                            ),
+                        ],
                     ),
                 ],
             ),
@@ -47,6 +59,38 @@ class InvitationController(
                     Content(
                         mediaType = "application/json",
                         schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Invalid token",
+                                value = """
+                                {
+                                    "errorCode": "INVALID_INVITATION_TOKEN",
+                                    "errorMessage": "Invitation token is invalid.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                            ExampleObject(
+                                name = "Token expired",
+                                value = """
+                                {
+                                    "errorCode": "INVITATION_TOKEN_EXPIRED",
+                                    "errorMessage": "Invitation token has expired.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                            ExampleObject(
+                                name = "Already accepted",
+                                value = """
+                                {
+                                    "errorCode": "INVITATION_ALREADY_ACCEPTED",
+                                    "errorMessage": "Invitation has already been accepted.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
                     ),
                 ],
             ),
@@ -76,6 +120,26 @@ class InvitationController(
                     Content(
                         mediaType = "application/json",
                         schema = Schema(implementation = AuthResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Invitation accepted",
+                                value = """
+                                {
+                                    "accessToken": "eyJhbGciOiJSUzI1NiJ9...",
+                                    "refreshToken": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                                    "tokenType": "Bearer",
+                                    "expiresIn": 900000,
+                                    "user": {
+                                        "id": "550e8400-e29b-41d4-a716-446655440000",
+                                        "email": "max.mustermann@firma.de",
+                                        "firstName": "Max",
+                                        "lastName": "Mustermann",
+                                        "role": "EMPLOYER"
+                                    }
+                                }
+                                """,
+                            ),
+                        ],
                     ),
                 ],
             ),
@@ -86,6 +150,38 @@ class InvitationController(
                     Content(
                         mediaType = "application/json",
                         schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Invalid token",
+                                value = """
+                                {
+                                    "errorCode": "INVALID_INVITATION_TOKEN",
+                                    "errorMessage": "Invitation token is invalid.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                            ExampleObject(
+                                name = "Token expired",
+                                value = """
+                                {
+                                    "errorCode": "INVITATION_TOKEN_EXPIRED",
+                                    "errorMessage": "Invitation token has expired.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                            ExampleObject(
+                                name = "Already accepted",
+                                value = """
+                                {
+                                    "errorCode": "INVITATION_ALREADY_ACCEPTED",
+                                    "errorMessage": "Invitation has already been accepted.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
                     ),
                 ],
             ),
