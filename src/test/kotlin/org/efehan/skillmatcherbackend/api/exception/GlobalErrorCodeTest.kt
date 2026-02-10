@@ -10,6 +10,8 @@ class GlobalErrorCodeTest {
     // Authentication
     val expectedBadCredentialsErrorCode = "BAD_CREDENTIALS"
     val expectedForbiddenErrorCode = "FORBIDDEN"
+    val expectedProjectAccessDeniedErrorCode = "PROJECT_ACCESS_DENIED"
+    val expectedUserSkillAccessDeniedErrorCode = "USER_SKILL_ACCESS_DENIED"
     val expectedUserMustLoginErrorCode = "USER_MUST_LOGIN"
 
     // Validation
@@ -27,6 +29,9 @@ class GlobalErrorCodeTest {
     val expectedRoleNotFoundErrorCode = "ROLE_NOT_FOUND"
     val expectedUserNotFoundErrorCode = "USER_NOT_FOUND"
     val expectedRefreshTokenNotFoundErrorCode = "REFRESH_TOKEN_NOT_FOUND"
+    val expectedProjectNotFoundErrorCode = "PROJECT_NOT_FOUND"
+    val expectedSkillNotFoundErrorCode = "SKILL_NOT_FOUND"
+    val expectedUserSkillNotFoundErrorCode = "USER_SKILL_NOT_FOUND"
 
     // Invitation
     val expectedInvalidInvitationTokenErrorCode = "INVALID_INVITATION_TOKEN"
@@ -51,6 +56,8 @@ class GlobalErrorCodeTest {
         // Authentication
         assertThat(expectedBadCredentialsErrorCode).isEqualTo(GlobalErrorCode.BAD_CREDENTIALS.name)
         assertThat(expectedForbiddenErrorCode).isEqualTo(GlobalErrorCode.FORBIDDEN.name)
+        assertThat(expectedProjectAccessDeniedErrorCode).isEqualTo(GlobalErrorCode.PROJECT_ACCESS_DENIED.name)
+        assertThat(expectedUserSkillAccessDeniedErrorCode).isEqualTo(GlobalErrorCode.USER_SKILL_ACCESS_DENIED.name)
         assertThat(expectedUserMustLoginErrorCode).isEqualTo(GlobalErrorCode.USER_MUST_LOGIN.name)
 
         // Validation
@@ -68,6 +75,9 @@ class GlobalErrorCodeTest {
         assertThat(expectedRoleNotFoundErrorCode).isEqualTo(GlobalErrorCode.ROLE_NOT_FOUND.name)
         assertThat(expectedUserNotFoundErrorCode).isEqualTo(GlobalErrorCode.USER_NOT_FOUND.name)
         assertThat(expectedRefreshTokenNotFoundErrorCode).isEqualTo(GlobalErrorCode.REFRESH_TOKEN_NOT_FOUND.name)
+        assertThat(expectedProjectNotFoundErrorCode).isEqualTo(GlobalErrorCode.PROJECT_NOT_FOUND.name)
+        assertThat(expectedSkillNotFoundErrorCode).isEqualTo(GlobalErrorCode.SKILL_NOT_FOUND.name)
+        assertThat(expectedUserSkillNotFoundErrorCode).isEqualTo(GlobalErrorCode.USER_SKILL_NOT_FOUND.name)
 
         // Invitation
         assertThat(expectedInvalidInvitationTokenErrorCode).isEqualTo(GlobalErrorCode.INVALID_INVITATION_TOKEN.name)
@@ -87,7 +97,7 @@ class GlobalErrorCodeTest {
         // General
         assertThat(expectedInternalServerErrorCode).isEqualTo(GlobalErrorCode.INTERNAL_SERVER_ERROR.name)
 
-        assertThat(GlobalErrorCode.entries.size).isEqualTo(23)
+        assertThat(GlobalErrorCode.entries.size).isEqualTo(28)
     }
 
     @Test

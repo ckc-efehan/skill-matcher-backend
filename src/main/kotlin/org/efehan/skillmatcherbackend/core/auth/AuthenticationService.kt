@@ -1,6 +1,5 @@
 package org.efehan.skillmatcherbackend.core.auth
 
-import jakarta.transaction.Transactional
 import org.efehan.skillmatcherbackend.config.properties.JwtProperties
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
 import org.efehan.skillmatcherbackend.persistence.RefreshTokenModel
@@ -16,6 +15,7 @@ import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -97,6 +97,7 @@ class AuthenticationService(
             throw InvalidTokenException(
                 message = "Refresh token is expired or invalid",
                 errorCode = GlobalErrorCode.INVALID_REFRESH_TOKEN,
+                status = HttpStatus.UNAUTHORIZED,
             )
         }
 
@@ -126,7 +127,10 @@ class AuthenticationService(
         newPassword: String,
     ) {
         if (!passwordEncoder.matches(currentPassword, user.passwordHash)) {
-            throw InvalidCredentialsException()
+            throw InvalidCredentialsException(
+                errorCode = GlobalErrorCode.BAD_CREDENTIALS,
+                status = HttpStatus.UNAUTHORIZED,
+            )
         }
 
         passwordValidationService.validateOrThrow(newPassword)

@@ -129,6 +129,19 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
         return ResponseEntity(body, HttpStatus.FORBIDDEN)
     }
 
+    @ExceptionHandler(org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException::class)
+    fun handleCustomAccessDenied(
+        exception: org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException,
+        request: HttpServletRequest,
+    ): ResponseEntity<GlobalErrorCodeResponse> {
+        logger.error(
+            "AccessDeniedException [${request.method} ${request.requestURI}] resource=${exception.resource}",
+            exception,
+        )
+        val body = GlobalErrorCodeResponse(errorCode = exception.errorCode)
+        return ResponseEntity(body, exception.status)
+    }
+
     override fun handleMethodArgumentNotValid(
         ex: MethodArgumentNotValidException,
         headers: HttpHeaders,

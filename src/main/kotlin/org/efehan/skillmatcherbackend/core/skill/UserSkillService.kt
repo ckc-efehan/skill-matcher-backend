@@ -1,12 +1,14 @@
 package org.efehan.skillmatcherbackend.core.skill
 
+import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
 import org.efehan.skillmatcherbackend.persistence.SkillModel
 import org.efehan.skillmatcherbackend.persistence.SkillRepository
 import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.persistence.UserSkillModel
 import org.efehan.skillmatcherbackend.persistence.UserSkillRepository
+import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
-import org.springframework.security.access.AccessDeniedException
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -49,10 +51,22 @@ class UserSkillService(
         val userSkill =
             userSkillRepo
                 .findById(userSkillId)
-                .orElseThrow { EntryNotFoundException(resource = "UserSkill", field = "id", value = userSkillId) }
+                .orElseThrow {
+                    EntryNotFoundException(
+                        resource = "UserSkill",
+                        field = "id",
+                        value = userSkillId,
+                        errorCode = GlobalErrorCode.USER_SKILL_NOT_FOUND,
+                        status = HttpStatus.NOT_FOUND,
+                    )
+                }
 
         if (userSkill.user.id != user.id) {
-            throw AccessDeniedException("Not allowed to delete this skill")
+            throw AccessDeniedException(
+                resource = "UserSkill",
+                errorCode = GlobalErrorCode.USER_SKILL_ACCESS_DENIED,
+                status = HttpStatus.FORBIDDEN,
+            )
         }
 
         userSkillRepo.delete(userSkill)

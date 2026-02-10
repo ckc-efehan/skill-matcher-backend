@@ -1,4 +1,4 @@
-package org.efehan.skillmatcherbackend.core.admin
+package org.efehan.skillmatcherbackend.core.project
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
@@ -8,50 +8,54 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
-import org.efehan.skillmatcherbackend.core.invitation.InvitationService
+import org.efehan.skillmatcherbackend.core.auth.SecurityUser
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCodeResponse
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/admin/users")
-@Tag(name = "Admin", description = "Admin endpoints")
-class AdminUserController(
-    private val adminUserService: AdminUserService,
-    private val invitationService: InvitationService,
+@RequestMapping("/api/projects")
+@Tag(name = "Projects", description = "Project management")
+class ProjectController(
+    private val service: ProjectService,
 ) {
     @Operation(
-        summary = "Create a new user",
-        method = "POST",
-        description = "Creates a new user with auto-generated username and sends an invitation email. Only accessible by admins.",
+        summary = "Create a project",
+        description = "Creates a new project. Only available for project managers.",
     )
     @ApiResponses(
         value = [
             ApiResponse(
                 responseCode = "201",
-                description = "User created successfully.",
+                description = "Project created.",
                 content = [
                     Content(
                         mediaType = "application/json",
-                        schema = Schema(implementation = CreateUserResponse::class),
+                        schema = Schema(implementation = ProjectDto::class),
                         examples = [
                             ExampleObject(
-                                name = "User created",
+                                name = "Project created",
                                 value = """
                                 {
                                     "id": "550e8400-e29b-41d4-a716-446655440000",
-                                    "username": "max.mustermann",
-                                    "email": "max.mustermann@firma.de",
-                                    "firstName": "Max",
-                                    "lastName": "Mustermann",
-                                    "role": "EMPLOYER"
+                                    "name": "Skill Matcher",
+                                    "description": "Internal tool to match employees to projects based on skills.",
+                                    "status": "PLANNED",
+                                    "startDate": "2026-03-01",
+                                    "endDate": "2026-09-01",
+                                    "maxMembers": 5,
+                                    "ownerName": "Max Mustermann",
+                                    "createdDate": "2026-02-10T12:00:00Z"
                                 }
                                 """,
                             ),
@@ -75,8 +79,8 @@ class AdminUserController(
                                     "errorMessage": "Request validation failed.",
                                     "fieldErrors": [
                                         {
-                                            "field": "email",
-                                            "message": "email must be a valid email address"
+                                            "field": "name",
+                                            "message": "must not be blank"
                                         }
                                     ]
                                 }
@@ -87,28 +91,6 @@ class AdminUserController(
                 ],
             ),
             ApiResponse(
-                responseCode = "404",
-                description = "Role not found.",
-                content = [
-                    Content(
-                        mediaType = "application/json",
-                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
-                        examples = [
-                            ExampleObject(
-                                name = "Role not found",
-                                value = """
-                                {
-                                    "errorCode": "ROLE_NOT_FOUND",
-                                    "errorMessage": "Role could not be found.",
-                                    "fieldErrors": []
-                                }
-                                """,
-                            ),
-                        ],
-                    ),
-                ],
-            ),
-            ApiResponse(
                 responseCode = "401",
                 description = "Not authenticated.",
                 content = [
@@ -120,9 +102,8 @@ class AdminUserController(
                                 name = "Not authenticated",
                                 value = """
                                 {
-                                    "errorCode": "UNAUTHORIZED",
-                                    "errorMessage": "Not authenticated.",
-                                    "fieldErrors": []
+                                    "errorCode": "USER_MUST_LOGIN",
+                                    "errorMessage": "User must be logged in."
                                 }
                                 """,
                             ),
@@ -132,7 +113,7 @@ class AdminUserController(
             ),
             ApiResponse(
                 responseCode = "403",
-                description = "Not authorized. Admin role required.",
+                description = "Not a project manager.",
                 content = [
                     Content(
                         mediaType = "application/json",
@@ -143,30 +124,7 @@ class AdminUserController(
                                 value = """
                                 {
                                     "errorCode": "FORBIDDEN",
-                                    "errorMessage": "Access denied.",
-                                    "fieldErrors": []
-                                }
-                                """,
-                            ),
-                        ],
-                    ),
-                ],
-            ),
-            ApiResponse(
-                responseCode = "409",
-                description = "User with this email already exists.",
-                content = [
-                    Content(
-                        mediaType = "application/json",
-                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
-                        examples = [
-                            ExampleObject(
-                                name = "Email already exists",
-                                value = """
-                                {
-                                    "errorCode": "USER_ALREADY_EXISTS",
-                                    "errorMessage": "User already exists.",
-                                    "fieldErrors": []
+                                    "errorMessage": "Forbidden."
                                 }
                                 """,
                             ),
@@ -177,220 +135,40 @@ class AdminUserController(
         ],
     )
     @PostMapping
-    fun createUser(
-        @Valid
-        @RequestBody
-        request: CreateUserRequest,
-    ): ResponseEntity<CreateUserResponse> =
-        ResponseEntity.status(HttpStatus.CREATED).body(
-            adminUserService.createUser(request),
-        )
+    @PreAuthorize("hasRole('PROJECTMANAGER')")
+    fun createProject(
+        @AuthenticationPrincipal securityUser: SecurityUser,
+        @Valid @RequestBody request: CreateProjectRequest,
+    ): ResponseEntity<ProjectDto> = ResponseEntity.status(HttpStatus.CREATED).body(service.createProject(securityUser.user, request))
 
     @Operation(
-        summary = "Resend invitation",
-        method = "POST",
-        description = "Resends an invitation email to a user. Only accessible by admins.",
-    )
-    @ApiResponses(
-        value = [
-            ApiResponse(
-                responseCode = "204",
-                description = "Invitation resent successfully.",
-                content = [Content()],
-            ),
-            ApiResponse(
-                responseCode = "401",
-                description = "Not authenticated.",
-                content = [
-                    Content(
-                        mediaType = "application/json",
-                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
-                        examples = [
-                            ExampleObject(
-                                name = "Not authenticated",
-                                value = """
-                                {
-                                    "errorCode": "UNAUTHORIZED",
-                                    "errorMessage": "Not authenticated.",
-                                    "fieldErrors": []
-                                }
-                                """,
-                            ),
-                        ],
-                    ),
-                ],
-            ),
-            ApiResponse(
-                responseCode = "403",
-                description = "Not authorized. Admin role required.",
-                content = [
-                    Content(
-                        mediaType = "application/json",
-                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
-                        examples = [
-                            ExampleObject(
-                                name = "Forbidden",
-                                value = """
-                                {
-                                    "errorCode": "FORBIDDEN",
-                                    "errorMessage": "Access denied.",
-                                    "fieldErrors": []
-                                }
-                                """,
-                            ),
-                        ],
-                    ),
-                ],
-            ),
-            ApiResponse(
-                responseCode = "404",
-                description = "User not found.",
-                content = [
-                    Content(
-                        mediaType = "application/json",
-                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
-                        examples = [
-                            ExampleObject(
-                                name = "User not found",
-                                value = """
-                                {
-                                    "errorCode": "USER_NOT_FOUND",
-                                    "errorMessage": "User with id 'some-id' could not be found.",
-                                    "fieldErrors": []
-                                }
-                                """,
-                            ),
-                        ],
-                    ),
-                ],
-            ),
-        ],
-    )
-    @PostMapping("/{userId}/resend-invitation")
-    fun resendInvitation(
-        @PathVariable userId: String,
-    ): ResponseEntity<Void> {
-        invitationService.resendInvitation(userId)
-        return ResponseEntity.noContent().build()
-    }
-
-    @Operation(
-        summary = "Update user status",
-        description = "Enables or disables a user account. Only accessible by admins.",
-    )
-    @ApiResponses(
-        value = [
-            ApiResponse(responseCode = "204", description = "Status updated.", content = [Content()]),
-            ApiResponse(
-                responseCode = "401",
-                description = "Not authenticated.",
-                content = [
-                    Content(
-                        mediaType = "application/json",
-                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
-                        examples = [
-                            ExampleObject(
-                                name = "Not authenticated",
-                                value = """
-                                {
-                                    "errorCode": "UNAUTHORIZED",
-                                    "errorMessage": "Not authenticated.",
-                                    "fieldErrors": []
-                                }
-                                """,
-                            ),
-                        ],
-                    ),
-                ],
-            ),
-            ApiResponse(
-                responseCode = "403",
-                description = "Not authorized. Admin role required.",
-                content = [
-                    Content(
-                        mediaType = "application/json",
-                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
-                        examples = [
-                            ExampleObject(
-                                name = "Forbidden",
-                                value = """
-                                {
-                                    "errorCode": "FORBIDDEN",
-                                    "errorMessage": "Access denied.",
-                                    "fieldErrors": []
-                                }
-                                """,
-                            ),
-                        ],
-                    ),
-                ],
-            ),
-            ApiResponse(
-                responseCode = "404",
-                description = "User not found.",
-                content = [
-                    Content(
-                        mediaType = "application/json",
-                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
-                        examples = [
-                            ExampleObject(
-                                name = "User not found",
-                                value = """
-                                {
-                                    "errorCode": "USER_NOT_FOUND",
-                                    "errorMessage": "User with id 'some-id' could not be found.",
-                                    "fieldErrors": []
-                                }
-                                """,
-                            ),
-                        ],
-                    ),
-                ],
-            ),
-        ],
-    )
-    @PatchMapping("/{userId}/status")
-    fun updateUserStatus(
-        @PathVariable
-        userId: String,
-        @Valid
-        @RequestBody
-        request: UpdateUserStatusRequest,
-    ): ResponseEntity<Unit> {
-        adminUserService.updateUserStatus(userId, request.enabled)
-        return ResponseEntity.noContent().build()
-    }
-
-    @Operation(
-        summary = "List all users",
-        method = "GET",
-        description = "Returns a list of all users. Only accessible by admins.",
+        summary = "Get a project",
+        description = "Returns a single project by ID.",
     )
     @ApiResponses(
         value = [
             ApiResponse(
                 responseCode = "200",
-                description = "Users retrieved successfully.",
+                description = "Project retrieved successfully.",
                 content = [
                     Content(
                         mediaType = "application/json",
-                        schema = Schema(implementation = AdminUserListResponse::class),
+                        schema = Schema(implementation = ProjectDto::class),
                         examples = [
                             ExampleObject(
-                                name = "User list",
+                                name = "Project found",
                                 value = """
-                                [
-                                    {
-                                        "id": "550e8400-e29b-41d4-a716-446655440000",
-                                        "username": "max.mustermann",
-                                        "email": "max.mustermann@firma.de",
-                                        "firstName": "Max",
-                                        "lastName": "Mustermann",
-                                        "role": "EMPLOYER",
-                                        "isEnabled": true,
-                                        "createdDate": "2025-01-15T10:30:00Z"
-                                    }
-                                ]
+                                {
+                                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                                    "name": "Skill Matcher",
+                                    "description": "Internal tool to match employees to projects based on skills.",
+                                    "status": "ACTIVE",
+                                    "startDate": "2026-03-01",
+                                    "endDate": "2026-09-01",
+                                    "maxMembers": 5,
+                                    "ownerName": "Max Mustermann",
+                                    "createdDate": "2026-02-10T12:00:00Z"
+                                }
                                 """,
                             ),
                         ],
@@ -409,9 +187,8 @@ class AdminUserController(
                                 name = "Not authenticated",
                                 value = """
                                 {
-                                    "errorCode": "UNAUTHORIZED",
-                                    "errorMessage": "Not authenticated.",
-                                    "fieldErrors": []
+                                    "errorCode": "USER_MUST_LOGIN",
+                                    "errorMessage": "User must be logged in."
                                 }
                                 """,
                             ),
@@ -420,20 +197,57 @@ class AdminUserController(
                 ],
             ),
             ApiResponse(
-                responseCode = "403",
-                description = "Not authorized. Admin role required.",
+                responseCode = "404",
+                description = "Project not found.",
                 content = [
                     Content(
                         mediaType = "application/json",
                         schema = Schema(implementation = GlobalErrorCodeResponse::class),
                         examples = [
                             ExampleObject(
-                                name = "Forbidden",
+                                name = "Not found",
                                 value = """
                                 {
-                                    "errorCode": "FORBIDDEN",
-                                    "errorMessage": "Access denied.",
-                                    "fieldErrors": []
+                                    "errorCode": "PROJECT_NOT_FOUND",
+                                    "errorMessage": "Project with id '550e8400-e29b-41d4-a716-446655440000' could not be found."
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
+    @GetMapping("/{id}")
+    fun getProject(
+        @PathVariable id: String,
+    ): ResponseEntity<ProjectDto> = ResponseEntity.ok(service.getProject(id))
+
+    @Operation(
+        summary = "Get all projects",
+        description = "Returns all projects.",
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Projects retrieved successfully.",
+            ),
+            ApiResponse(
+                responseCode = "401",
+                description = "Not authenticated.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not authenticated",
+                                value = """
+                                {
+                                    "errorCode": "USER_MUST_LOGIN",
+                                    "errorMessage": "User must be logged in."
                                 }
                                 """,
                             ),
@@ -444,18 +258,151 @@ class AdminUserController(
         ],
     )
     @GetMapping
-    fun listUsers(): ResponseEntity<List<AdminUserListResponse>> = ResponseEntity.ok(adminUserService.listUsers())
+    fun getAllProjects(): ResponseEntity<List<ProjectDto>> = ResponseEntity.ok(service.getAllProjects())
 
     @Operation(
-        summary = "Update user role",
-        method = "PATCH",
-        description = "Changes the role of a user. Only accessible by admins.",
+        summary = "Update a project",
+        description = "Updates an existing project. Only the owner can update.",
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Project updated.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = ProjectDto::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Project updated",
+                                value = """
+                                {
+                                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                                    "name": "Skill Matcher v2",
+                                    "description": "Updated description for the project.",
+                                    "status": "ACTIVE",
+                                    "startDate": "2026-03-01",
+                                    "endDate": "2026-12-01",
+                                    "maxMembers": 8,
+                                    "ownerName": "Max Mustermann",
+                                    "createdDate": "2026-02-10T12:00:00Z"
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "400",
+                description = "Validation error.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Validation error",
+                                value = """
+                                {
+                                    "errorCode": "VALIDATION_ERROR",
+                                    "errorMessage": "Request validation failed.",
+                                    "fieldErrors": [
+                                        {
+                                            "field": "name",
+                                            "message": "must not be blank"
+                                        }
+                                    ]
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "401",
+                description = "Not authenticated.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not authenticated",
+                                value = """
+                                {
+                                    "errorCode": "USER_MUST_LOGIN",
+                                    "errorMessage": "User must be logged in."
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "Not the project owner.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Forbidden",
+                                value = """
+                                {
+                                    "errorCode": "PROJECT_ACCESS_DENIED",
+                                    "errorMessage": "Not allowed to modify Project."
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Project not found.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not found",
+                                value = """
+                                {
+                                    "errorCode": "PROJECT_NOT_FOUND",
+                                    "errorMessage": "Project with id '550e8400-e29b-41d4-a716-446655440000' could not be found."
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('PROJECTMANAGER')")
+    fun updateProject(
+        @AuthenticationPrincipal securityUser: SecurityUser,
+        @PathVariable id: String,
+        @Valid @RequestBody request: UpdateProjectRequest,
+    ): ResponseEntity<ProjectDto> = ResponseEntity.ok(service.updateProject(securityUser.user, id, request))
+
+    @Operation(
+        summary = "Delete a project",
+        description = "Deletes a project and its associated skills. Only the owner can delete.",
     )
     @ApiResponses(
         value = [
             ApiResponse(
                 responseCode = "204",
-                description = "Role updated successfully.",
+                description = "Project deleted.",
                 content = [Content()],
             ),
             ApiResponse(
@@ -470,9 +417,8 @@ class AdminUserController(
                                 name = "Not authenticated",
                                 value = """
                                 {
-                                    "errorCode": "UNAUTHORIZED",
-                                    "errorMessage": "Not authenticated.",
-                                    "fieldErrors": []
+                                    "errorCode": "USER_MUST_LOGIN",
+                                    "errorMessage": "User must be logged in."
                                 }
                                 """,
                             ),
@@ -482,7 +428,7 @@ class AdminUserController(
             ),
             ApiResponse(
                 responseCode = "403",
-                description = "Not authorized. Admin role required.",
+                description = "Not the project owner.",
                 content = [
                     Content(
                         mediaType = "application/json",
@@ -492,9 +438,8 @@ class AdminUserController(
                                 name = "Forbidden",
                                 value = """
                                 {
-                                    "errorCode": "FORBIDDEN",
-                                    "errorMessage": "Access denied.",
-                                    "fieldErrors": []
+                                    "errorCode": "PROJECT_ACCESS_DENIED",
+                                    "errorMessage": "Not allowed to modify Project."
                                 }
                                 """,
                             ),
@@ -504,19 +449,18 @@ class AdminUserController(
             ),
             ApiResponse(
                 responseCode = "404",
-                description = "User or role not found.",
+                description = "Project not found.",
                 content = [
                     Content(
                         mediaType = "application/json",
                         schema = Schema(implementation = GlobalErrorCodeResponse::class),
                         examples = [
                             ExampleObject(
-                                name = "User or role not found",
+                                name = "Not found",
                                 value = """
                                 {
-                                    "errorCode": "USER_NOT_FOUND",
-                                    "errorMessage": "User with id 'some-id' could not be found.",
-                                    "fieldErrors": []
+                                    "errorCode": "PROJECT_NOT_FOUND",
+                                    "errorMessage": "Project with id '550e8400-e29b-41d4-a716-446655440000' could not be found."
                                 }
                                 """,
                             ),
@@ -526,14 +470,13 @@ class AdminUserController(
             ),
         ],
     )
-    @PatchMapping("/{userId}/role")
-    fun updateUserRole(
-        @PathVariable userId: String,
-        @Valid
-        @RequestBody
-        request: UpdateUserRoleRequest,
-    ): ResponseEntity<Unit> {
-        adminUserService.updateUserRole(userId, request.role)
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('PROJECTMANAGER')")
+    fun deleteProject(
+        @AuthenticationPrincipal securityUser: SecurityUser,
+        @PathVariable id: String,
+    ): ResponseEntity<Void> {
+        service.deleteProject(securityUser.user, id)
         return ResponseEntity.noContent().build()
     }
 }

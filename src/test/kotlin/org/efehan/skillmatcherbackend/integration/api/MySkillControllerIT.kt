@@ -233,7 +233,7 @@ class MySkillControllerIT : AbstractIntegrationTest() {
                 header("Authorization", "Bearer $token")
             }.andExpect {
                 status { isNotFound() }
-                jsonPath("$.errorCode") { value("NOT_FOUND") }
+                jsonPath("$.errorCode") { value("USER_SKILL_NOT_FOUND") }
             }
     }
 
@@ -251,6 +251,7 @@ class MySkillControllerIT : AbstractIntegrationTest() {
                 header("Authorization", "Bearer $token1")
             }.andExpect {
                 status { isForbidden() }
+                jsonPath("$.errorCode") { value("USER_SKILL_ACCESS_DENIED") }
             }
     }
 

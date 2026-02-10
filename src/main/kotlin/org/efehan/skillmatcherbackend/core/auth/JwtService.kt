@@ -5,8 +5,10 @@ import io.jsonwebtoken.JwtException
 import io.jsonwebtoken.JwtParser
 import io.jsonwebtoken.Jwts
 import org.efehan.skillmatcherbackend.config.properties.JwtProperties
+import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
 import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.shared.exceptions.InvalidTokenException
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import java.nio.charset.StandardCharsets
 import java.security.KeyFactory
@@ -82,9 +84,19 @@ class JwtService(
         try {
             jwtParser.parseSignedClaims(token).payload
         } catch (ex: JwtException) {
-            throw InvalidTokenException("Invalid JWT", ex)
+            throw InvalidTokenException(
+                message = "Invalid JWT",
+                cause = ex,
+                errorCode = GlobalErrorCode.INVALID_REFRESH_TOKEN,
+                status = HttpStatus.UNAUTHORIZED,
+            )
         } catch (ex: IllegalArgumentException) {
-            throw InvalidTokenException("Invalid JWT", ex)
+            throw InvalidTokenException(
+                message = "Invalid JWT",
+                cause = ex,
+                errorCode = GlobalErrorCode.INVALID_REFRESH_TOKEN,
+                status = HttpStatus.UNAUTHORIZED,
+            )
         }
 
     fun getEmail(token: String): String = validateToken(token).subject

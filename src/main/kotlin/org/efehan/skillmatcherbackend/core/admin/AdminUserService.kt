@@ -1,6 +1,5 @@
 package org.efehan.skillmatcherbackend.core.admin
 
-import jakarta.transaction.Transactional
 import org.efehan.skillmatcherbackend.core.invitation.InvitationService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
 import org.efehan.skillmatcherbackend.persistence.RefreshTokenRepository
@@ -11,6 +10,7 @@ import org.efehan.skillmatcherbackend.shared.exceptions.DuplicateEntryException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.text.Normalizer
 
 @Service
@@ -75,7 +75,15 @@ class AdminUserService(
         val user =
             userRepository
                 .findById(userId)
-                .orElseThrow { EntryNotFoundException("User", "id", userId) }
+                .orElseThrow {
+                    EntryNotFoundException(
+                        resource = "User",
+                        field = "id",
+                        value = userId,
+                        errorCode = GlobalErrorCode.USER_NOT_FOUND,
+                        status = HttpStatus.NOT_FOUND,
+                    )
+                }
         user.isEnabled = enabled
         userRepository.save(user)
 
@@ -105,7 +113,15 @@ class AdminUserService(
         val user =
             userRepository
                 .findById(userId)
-                .orElseThrow { EntryNotFoundException("User", "id", userId) }
+                .orElseThrow {
+                    EntryNotFoundException(
+                        resource = "User",
+                        field = "id",
+                        value = userId,
+                        errorCode = GlobalErrorCode.USER_NOT_FOUND,
+                        status = HttpStatus.NOT_FOUND,
+                    )
+                }
 
         val role =
             roleRepository.findByName(roleName.uppercase())

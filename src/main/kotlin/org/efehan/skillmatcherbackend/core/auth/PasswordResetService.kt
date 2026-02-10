@@ -1,6 +1,5 @@
 package org.efehan.skillmatcherbackend.core.auth
 
-import jakarta.transaction.Transactional
 import org.efehan.skillmatcherbackend.config.properties.PasswordResetProperties
 import org.efehan.skillmatcherbackend.core.mail.EmailService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
@@ -13,6 +12,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Instant
 

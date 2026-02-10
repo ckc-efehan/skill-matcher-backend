@@ -347,7 +347,7 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
                 withBodyRequest(request)
             }.andExpect {
                 status { isNotFound() }
-                jsonPath("$.errorCode") { value("NOT_FOUND") }
+                jsonPath("$.errorCode") { value("USER_NOT_FOUND") }
             }
     }
 
