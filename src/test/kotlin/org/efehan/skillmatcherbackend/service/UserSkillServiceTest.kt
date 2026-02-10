@@ -153,6 +153,39 @@ class UserSkillServiceTest {
     }
 
     @Test
+    fun `getAllSkills returns all skills as DTOs`() {
+        // given
+        val skills =
+            listOf(
+                SkillModel(name = "kotlin"),
+                SkillModel(name = "java"),
+                SkillModel(name = "spring"),
+            )
+        every { skillRepo.findAll() } returns skills
+
+        // when
+        val result = userSkillService.getAllSkills()
+
+        // then
+        assertThat(result).hasSize(3)
+        assertThat(result[0].name).isEqualTo("kotlin")
+        assertThat(result[1].name).isEqualTo("java")
+        assertThat(result[2].name).isEqualTo("spring")
+    }
+
+    @Test
+    fun `getAllSkills returns empty list when no skills exist`() {
+        // given
+        every { skillRepo.findAll() } returns emptyList()
+
+        // when
+        val result = userSkillService.getAllSkills()
+
+        // then
+        assertThat(result).isEmpty()
+    }
+
+    @Test
     fun `getUserSkills returns mapped DTOs`() {
         // given
         val skill1 = SkillModel(name = "kotlin")

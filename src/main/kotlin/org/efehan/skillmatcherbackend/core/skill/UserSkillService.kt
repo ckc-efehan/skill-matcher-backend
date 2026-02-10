@@ -38,6 +38,8 @@ class UserSkillService(
         return userSkill.toDto() to created
     }
 
+    fun getAllSkills(): List<SkillDto> = skillRepo.findAll().map { SkillDto(id = it.id, name = it.name) }
+
     fun getUserSkills(user: UserModel): List<UserSkillDto> = userSkillRepo.findByUser(user).map { it.toDto() }
 
     fun deleteSkill(
