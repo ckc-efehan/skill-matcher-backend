@@ -17,3 +17,8 @@ data class UserSkillDto(
     val name: String,
     val level: Int,
 )
+
+data class SkillDto(
+    val id: String,
+    val name: String,
+)

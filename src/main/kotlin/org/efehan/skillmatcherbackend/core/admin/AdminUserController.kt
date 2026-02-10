@@ -66,6 +66,23 @@ class AdminUserController(
                     Content(
                         mediaType = "application/json",
                         schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Validation error",
+                                value = """
+                                {
+                                    "errorCode": "VALIDATION_ERROR",
+                                    "errorMessage": "Request validation failed.",
+                                    "fieldErrors": [
+                                        {
+                                            "field": "email",
+                                            "message": "email must be a valid email address"
+                                        }
+                                    ]
+                                }
+                                """,
+                            ),
+                        ],
                     ),
                 ],
             ),
@@ -94,12 +111,46 @@ class AdminUserController(
             ApiResponse(
                 responseCode = "401",
                 description = "Not authenticated.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not authenticated",
+                                value = """
+                                {
+                                    "errorCode": "UNAUTHORIZED",
+                                    "errorMessage": "Not authenticated.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             ApiResponse(
                 responseCode = "403",
                 description = "Not authorized. Admin role required.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Forbidden",
+                                value = """
+                                {
+                                    "errorCode": "FORBIDDEN",
+                                    "errorMessage": "Access denied.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             ApiResponse(
                 responseCode = "409",
@@ -150,12 +201,46 @@ class AdminUserController(
             ApiResponse(
                 responseCode = "401",
                 description = "Not authenticated.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not authenticated",
+                                value = """
+                                {
+                                    "errorCode": "UNAUTHORIZED",
+                                    "errorMessage": "Not authenticated.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             ApiResponse(
                 responseCode = "403",
                 description = "Not authorized. Admin role required.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Forbidden",
+                                value = """
+                                {
+                                    "errorCode": "FORBIDDEN",
+                                    "errorMessage": "Access denied.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             ApiResponse(
                 responseCode = "404",
@@ -164,6 +249,18 @@ class AdminUserController(
                     Content(
                         mediaType = "application/json",
                         schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "User not found",
+                                value = """
+                                {
+                                    "errorCode": "ENTRY_NOT_FOUND",
+                                    "errorMessage": "User with id not found.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
                     ),
                 ],
             ),
@@ -187,17 +284,68 @@ class AdminUserController(
             ApiResponse(
                 responseCode = "401",
                 description = "Not authenticated.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not authenticated",
+                                value = """
+                                {
+                                    "errorCode": "UNAUTHORIZED",
+                                    "errorMessage": "Not authenticated.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             ApiResponse(
                 responseCode = "403",
                 description = "Not authorized. Admin role required.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Forbidden",
+                                value = """
+                                {
+                                    "errorCode": "FORBIDDEN",
+                                    "errorMessage": "Access denied.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             ApiResponse(
                 responseCode = "404",
                 description = "User not found.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "User not found",
+                                value = """
+                                {
+                                    "errorCode": "ENTRY_NOT_FOUND",
+                                    "errorMessage": "User with id not found.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
         ],
     )
@@ -223,16 +371,75 @@ class AdminUserController(
             ApiResponse(
                 responseCode = "200",
                 description = "Users retrieved successfully.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = AdminUserListResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "User list",
+                                value = """
+                                [
+                                    {
+                                        "id": "550e8400-e29b-41d4-a716-446655440000",
+                                        "username": "max.mustermann",
+                                        "email": "max.mustermann@firma.de",
+                                        "firstName": "Max",
+                                        "lastName": "Mustermann",
+                                        "role": "EMPLOYER",
+                                        "isEnabled": true,
+                                        "createdDate": "2025-01-15T10:30:00Z"
+                                    }
+                                ]
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             ApiResponse(
                 responseCode = "401",
                 description = "Not authenticated.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not authenticated",
+                                value = """
+                                {
+                                    "errorCode": "UNAUTHORIZED",
+                                    "errorMessage": "Not authenticated.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             ApiResponse(
                 responseCode = "403",
                 description = "Not authorized. Admin role required.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Forbidden",
+                                value = """
+                                {
+                                    "errorCode": "FORBIDDEN",
+                                    "errorMessage": "Access denied.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
         ],
     )
@@ -254,12 +461,46 @@ class AdminUserController(
             ApiResponse(
                 responseCode = "401",
                 description = "Not authenticated.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not authenticated",
+                                value = """
+                                {
+                                    "errorCode": "UNAUTHORIZED",
+                                    "errorMessage": "Not authenticated.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             ApiResponse(
                 responseCode = "403",
                 description = "Not authorized. Admin role required.",
-                content = [Content(mediaType = "application/json", schema = Schema(implementation = GlobalErrorCodeResponse::class))],
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Forbidden",
+                                value = """
+                                {
+                                    "errorCode": "FORBIDDEN",
+                                    "errorMessage": "Access denied.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
             ),
             ApiResponse(
                 responseCode = "404",
@@ -268,6 +509,18 @@ class AdminUserController(
                     Content(
                         mediaType = "application/json",
                         schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "User or role not found",
+                                value = """
+                                {
+                                    "errorCode": "ENTRY_NOT_FOUND",
+                                    "errorMessage": "User with id not found.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
+                        ],
                     ),
                 ],
             ),
