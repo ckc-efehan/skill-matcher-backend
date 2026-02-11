@@ -109,7 +109,9 @@ class InvitationController(
     @Operation(
         summary = "Accept invitation",
         method = "POST",
-        description = "Accepts an invitation token and sets the user's password. Returns access and refresh tokens.",
+        description =
+            "Accepts an invitation token, sets the user's password and profile (firstName, lastName). " +
+                "Returns access and refresh tokens.",
     )
     @ApiResponses(
         value = [
@@ -194,6 +196,6 @@ class InvitationController(
         request: AcceptInvitationRequest,
     ): ResponseEntity<AuthResponse> =
         ResponseEntity.ok(
-            invitationService.acceptInvitation(request.token, request.password),
+            invitationService.acceptInvitation(request.token, request.password, request.firstName, request.lastName),
         )
 }
