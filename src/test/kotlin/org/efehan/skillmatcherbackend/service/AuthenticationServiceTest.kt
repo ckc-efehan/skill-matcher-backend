@@ -98,7 +98,6 @@ class AuthenticationServiceTest {
         val role = RoleModel("ADMIN", null)
         val user =
             UserModel(
-                username = "testuser",
                 email = email,
                 passwordHash = "hashed",
                 firstName = "Test",

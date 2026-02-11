@@ -100,7 +100,6 @@ class PasswordResetServiceTest {
         val role = RoleModel("ADMIN", null)
         val user =
             UserModel(
-                username = "testuser",
                 email = email,
                 passwordHash = "old-password-hash",
                 firstName = "Test",

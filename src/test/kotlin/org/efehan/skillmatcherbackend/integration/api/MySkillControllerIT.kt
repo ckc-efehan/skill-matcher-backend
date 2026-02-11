@@ -28,7 +28,6 @@ class MySkillControllerIT : AbstractIntegrationTest() {
         val role = roleRepository.save(RoleModel("EMPLOYER", null))
         val user =
             UserModel(
-                username = "max.mustermann",
                 email = "max@firma.de",
                 passwordHash = passwordEncoder.encode("Test-Password1!"),
                 firstName = "Max",
@@ -44,7 +43,6 @@ class MySkillControllerIT : AbstractIntegrationTest() {
         val role = roleRepository.findAll().first()
         val user =
             UserModel(
-                username = "other.user",
                 email = "other@firma.de",
                 passwordHash = passwordEncoder.encode("Test-Password1!"),
                 firstName = "Other",

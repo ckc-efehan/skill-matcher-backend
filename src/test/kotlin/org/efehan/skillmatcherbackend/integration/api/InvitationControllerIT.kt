@@ -32,11 +32,10 @@ class InvitationControllerIT : AbstractIntegrationTest() {
         val role = roleRepository.save(RoleModel("EMPLOYER", null))
         val user =
             UserModel(
-                username = "max.mustermann",
                 email = "max@firma.de",
                 passwordHash = null,
-                firstName = "Max",
-                lastName = "Mustermann",
+                firstName = null,
+                lastName = null,
                 role = role,
             )
         user.isEnabled = false
@@ -122,7 +121,13 @@ class InvitationControllerIT : AbstractIntegrationTest() {
     fun `should accept invitation with valid token and return auth response`() {
         // given
         createInvitedUser()
-        val request = AcceptInvitationRequest(token = "test-invitation-token", password = "NewSecret-Password1!")
+        val request =
+            AcceptInvitationRequest(
+                token = "test-invitation-token",
+                password = "NewSecret-Password1!",
+                firstName = "Max",
+                lastName = "Mustermann",
+            )
 
         // when & then
         mockMvc
@@ -138,17 +143,25 @@ class InvitationControllerIT : AbstractIntegrationTest() {
                 jsonPath("$.user.role") { value("EMPLOYER") }
             }
 
-        // verify user was activated
+        // verify user was activated and profile completed
         val updatedUser = userRepository.findByEmail("max@firma.de")!!
         assertThat(updatedUser.isEnabled).isTrue()
         assertThat(updatedUser.passwordHash).isNotNull()
+        assertThat(updatedUser.firstName).isEqualTo("Max")
+        assertThat(updatedUser.lastName).isEqualTo("Mustermann")
         assertThat(passwordEncoder.matches("NewSecret-Password1!", updatedUser.passwordHash)).isTrue()
     }
 
     @Test
     fun `should return 400 for invalid token`() {
         // given
-        val request = AcceptInvitationRequest(token = "non-existent-token", password = "NewSecret-Password1!")
+        val request =
+            AcceptInvitationRequest(
+                token = "non-existent-token",
+                password = "NewSecret-Password1!",
+                firstName = "Max",
+                lastName = "Mustermann",
+            )
 
         // when & then
         mockMvc
@@ -164,7 +177,13 @@ class InvitationControllerIT : AbstractIntegrationTest() {
     fun `should return 400 for expired token`() {
         // given
         createInvitedUser(expiresAt = Instant.now().minus(1, ChronoUnit.HOURS))
-        val request = AcceptInvitationRequest(token = "test-invitation-token", password = "NewSecret-Password1!")
+        val request =
+            AcceptInvitationRequest(
+                token = "test-invitation-token",
+                password = "NewSecret-Password1!",
+                firstName = "Max",
+                lastName = "Mustermann",
+            )
 
         // when & then
         mockMvc
@@ -180,7 +199,13 @@ class InvitationControllerIT : AbstractIntegrationTest() {
     fun `should return 400 for already used token`() {
         // given
         createInvitedUser(used = true)
-        val request = AcceptInvitationRequest(token = "test-invitation-token", password = "NewSecret-Password1!")
+        val request =
+            AcceptInvitationRequest(
+                token = "test-invitation-token",
+                password = "NewSecret-Password1!",
+                firstName = "Max",
+                lastName = "Mustermann",
+            )
 
         // when & then
         mockMvc
@@ -196,7 +221,13 @@ class InvitationControllerIT : AbstractIntegrationTest() {
     fun `should return 400 for weak password`() {
         // given
         createInvitedUser()
-        val request = AcceptInvitationRequest(token = "test-invitation-token", password = "weak")
+        val request =
+            AcceptInvitationRequest(
+                token = "test-invitation-token",
+                password = "weak",
+                firstName = "Max",
+                lastName = "Mustermann",
+            )
 
         // when & then
         mockMvc

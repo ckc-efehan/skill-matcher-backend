@@ -76,7 +76,6 @@ class JpaAuditingConfigTest {
         val role = RoleModel(name = "EMPLOYER", description = null)
         val user =
             UserModel(
-                username = "testuser",
                 email = "test@example.com",
                 passwordHash = "hashedPassword",
                 firstName = "Test",
