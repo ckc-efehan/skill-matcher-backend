@@ -30,7 +30,9 @@ class AdminUserController(
     @Operation(
         summary = "Create a new user",
         method = "POST",
-        description = "Creates a new user with auto-generated username and sends an invitation email. Only accessible by admins.",
+        description =
+            "Creates a new user and sends an invitation email. " +
+                "The user completes their profile upon accepting the invitation. Only accessible by admins.",
     )
     @ApiResponses(
         value = [
@@ -47,10 +49,7 @@ class AdminUserController(
                                 value = """
                                 {
                                     "id": "550e8400-e29b-41d4-a716-446655440000",
-                                    "username": "max.mustermann",
                                     "email": "max.mustermann@firma.de",
-                                    "firstName": "Max",
-                                    "lastName": "Mustermann",
                                     "role": "EMPLOYER"
                                 }
                                 """,
@@ -382,7 +381,6 @@ class AdminUserController(
                                 [
                                     {
                                         "id": "550e8400-e29b-41d4-a716-446655440000",
-                                        "username": "max.mustermann",
                                         "email": "max.mustermann@firma.de",
                                         "firstName": "Max",
                                         "lastName": "Mustermann",
