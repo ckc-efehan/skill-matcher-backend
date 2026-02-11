@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
+import jakarta.validation.constraints.Pattern
 import java.time.Instant
 import java.time.LocalDate
 
@@ -33,6 +34,7 @@ data class UpdateProjectRequest(
     @Schema(example = "Updated description for the project.")
     val description: String,
     @field:NotNull
+    @field:Pattern(regexp = "PLANNED|ACTIVE|PAUSED|COMPLETED", message = "Status must be one of: PLANNED, ACTIVE, PAUSED, COMPLETED")
     @Schema(example = "ACTIVE")
     val status: String,
     @field:NotNull

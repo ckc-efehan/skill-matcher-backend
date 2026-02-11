@@ -69,7 +69,7 @@ class ProjectService(
         val project = findProjectOrThrow(projectId)
         checkOwnership(project, user)
 
-        projectSkillRepo.findByProject(project).forEach { projectSkillRepo.delete(it) }
+        projectSkillRepo.deleteAll(projectSkillRepo.findByProject(project))
         projectRepo.delete(project)
     }
 

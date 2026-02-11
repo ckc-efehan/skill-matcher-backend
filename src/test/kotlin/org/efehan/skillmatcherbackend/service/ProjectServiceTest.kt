@@ -239,14 +239,14 @@ class ProjectServiceTest {
         val projectSkill = ProjectSkillModel(project = project, skill = skill, level = 3)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { projectSkillRepo.findByProject(project) } returns listOf(projectSkill)
-        every { projectSkillRepo.delete(projectSkill) } returns Unit
+        every { projectSkillRepo.deleteAll(listOf(projectSkill)) } returns Unit
         every { projectRepo.delete(project) } returns Unit
 
         // when
         projectService.deleteProject(owner, project.id)
 
         // then
-        verify(exactly = 1) { projectSkillRepo.delete(projectSkill) }
+        verify(exactly = 1) { projectSkillRepo.deleteAll(listOf(projectSkill)) }
         verify(exactly = 1) { projectRepo.delete(project) }
     }
 
@@ -256,13 +256,14 @@ class ProjectServiceTest {
         val project = buildProject(owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { projectSkillRepo.findByProject(project) } returns emptyList()
+        every { projectSkillRepo.deleteAll(emptyList()) } returns Unit
         every { projectRepo.delete(project) } returns Unit
 
         // when
         projectService.deleteProject(owner, project.id)
 
         // then
-        verify(exactly = 0) { projectSkillRepo.delete(any()) }
+        verify(exactly = 1) { projectSkillRepo.deleteAll(emptyList()) }
         verify(exactly = 1) { projectRepo.delete(project) }
     }
 
