@@ -35,7 +35,11 @@ class GlobalExceptionHandlerTest {
 
     @Test
     fun `handleInvalidCredentials should return UNAUTHORIZED with BAD_CREDENTIALS error code`() {
-        val exception = InvalidCredentialsException()
+        val exception =
+            InvalidCredentialsException(
+                errorCode = GlobalErrorCode.BAD_CREDENTIALS,
+                status = HttpStatus.UNAUTHORIZED,
+            )
 
         val response = handler.handleInvalidCredentials(exception, request)
 
@@ -45,7 +49,12 @@ class GlobalExceptionHandlerTest {
 
     @Test
     fun `handleInvalidToken should return UNAUTHORIZED with INVALID_REFRESH_TOKEN error code`() {
-        val exception = InvalidTokenException(message = "Token expired")
+        val exception =
+            InvalidTokenException(
+                message = "Token expired",
+                errorCode = GlobalErrorCode.INVALID_REFRESH_TOKEN,
+                status = HttpStatus.UNAUTHORIZED,
+            )
 
         val response = handler.handleInvalidToken(exception, request)
 
@@ -55,7 +64,11 @@ class GlobalExceptionHandlerTest {
 
     @Test
     fun `handleAccountDisabled should return FORBIDDEN with ACCOUNT_DISABLED error code`() {
-        val exception = AccountDisabledException()
+        val exception =
+            AccountDisabledException(
+                errorCode = GlobalErrorCode.ACCOUNT_DISABLED,
+                status = HttpStatus.FORBIDDEN,
+            )
 
         val response = handler.handleAccountDisabled(exception, request)
 
@@ -69,6 +82,7 @@ class GlobalExceptionHandlerTest {
         val exception =
             PasswordValidationException(
                 errorCode = GlobalErrorCode.INVALID_PASSWORD,
+                status = HttpStatus.BAD_REQUEST,
                 fieldErrors = fieldErrors,
                 message = "Password validation failed",
             )
@@ -93,6 +107,8 @@ class GlobalExceptionHandlerTest {
                 resource = "User",
                 field = "email",
                 value = "test@test.com",
+                errorCode = GlobalErrorCode.DUPLICATE_ENTRY,
+                status = HttpStatus.CONFLICT,
             )
 
         val response = handler.handleDuplicateEntry(exception, request)
@@ -108,6 +124,8 @@ class GlobalExceptionHandlerTest {
                 resource = "User",
                 field = "id",
                 value = "123",
+                errorCode = GlobalErrorCode.NOT_FOUND,
+                status = HttpStatus.NOT_FOUND,
             )
 
         val response = handler.handleEntryNotFound(exception, request)
@@ -131,6 +149,21 @@ class GlobalExceptionHandlerTest {
         val exception = AccessDeniedException("Access denied")
 
         val response = handler.handleAccessDenied(exception, request)
+
+        assertThat(response.statusCode).isEqualTo(HttpStatus.FORBIDDEN)
+        assertThat(response.body?.errorCode).isEqualTo(GlobalErrorCode.FORBIDDEN)
+    }
+
+    @Test
+    fun `handleCustomAccessDenied should return FORBIDDEN with FORBIDDEN error code`() {
+        val exception =
+            org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException(
+                resource = "Project",
+                errorCode = GlobalErrorCode.FORBIDDEN,
+                status = HttpStatus.FORBIDDEN,
+            )
+
+        val response = handler.handleCustomAccessDenied(exception, request)
 
         assertThat(response.statusCode).isEqualTo(HttpStatus.FORBIDDEN)
         assertThat(response.body?.errorCode).isEqualTo(GlobalErrorCode.FORBIDDEN)

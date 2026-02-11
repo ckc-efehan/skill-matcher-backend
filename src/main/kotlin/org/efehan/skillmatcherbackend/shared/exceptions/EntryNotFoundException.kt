@@ -8,7 +8,7 @@ data class EntryNotFoundException(
     val resource: String,
     val field: String,
     val value: String,
-    val errorCode: GlobalErrorCode = GlobalErrorCode.NOT_FOUND,
-    val status: HttpStatus = HttpStatus.NOT_FOUND,
+    val errorCode: GlobalErrorCode,
+    val status: HttpStatus,
     override val message: String = "$resource with $field '$value' could not be found.",
 ) : IllegalArgumentException(message)

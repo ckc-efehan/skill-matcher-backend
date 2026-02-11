@@ -222,8 +222,8 @@ class MySkillController(
                                 name = "Not allowed",
                                 value = """
                                 {
-                                    "errorCode": "FORBIDDEN",
-                                    "errorMessage": "Not allowed to delete this skill.",
+                                    "errorCode": "USER_SKILL_ACCESS_DENIED",
+                                    "errorMessage": "Not allowed to modify UserSkill.",
                                     "fieldErrors": []
                                 }
                                 """,
@@ -244,8 +244,8 @@ class MySkillController(
                                 name = "Skill not found",
                                 value = """
                                 {
-                                    "errorCode": "ENTRY_NOT_FOUND",
-                                    "errorMessage": "UserSkill with id not found.",
+                                    "errorCode": "USER_SKILL_NOT_FOUND",
+                                    "errorMessage": "UserSkill with id 'some-id' could not be found.",
                                     "fieldErrors": []
                                 }
                                 """,

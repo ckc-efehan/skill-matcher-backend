@@ -27,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.password.PasswordEncoder
 import java.time.Clock
 import java.time.Instant
@@ -345,6 +346,7 @@ class InvitationServiceTest {
         every { passwordValidationService.validateOrThrow("weak") } throws
             org.efehan.skillmatcherbackend.shared.exceptions.PasswordValidationException(
                 errorCode = GlobalErrorCode.INVALID_PASSWORD,
+                status = HttpStatus.BAD_REQUEST,
                 message = "Password does not meet the required complexity.",
             )
 

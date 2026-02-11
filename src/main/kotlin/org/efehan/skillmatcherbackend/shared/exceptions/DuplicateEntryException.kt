@@ -7,7 +7,7 @@ data class DuplicateEntryException(
     val resource: String,
     val field: String,
     val value: String,
-    val errorCode: GlobalErrorCode = GlobalErrorCode.DUPLICATE_ENTRY,
-    val status: HttpStatus = HttpStatus.CONFLICT,
+    val errorCode: GlobalErrorCode,
+    val status: HttpStatus,
     override val message: String = "$resource with $field '$value' already exists.",
 ) : RuntimeException(message)

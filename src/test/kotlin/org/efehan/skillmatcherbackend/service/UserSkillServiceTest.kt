@@ -14,12 +14,12 @@ import org.efehan.skillmatcherbackend.persistence.SkillRepository
 import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.persistence.UserSkillModel
 import org.efehan.skillmatcherbackend.persistence.UserSkillRepository
+import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.springframework.security.access.AccessDeniedException
 import java.util.Optional
 
 @ExtendWith(MockKExtension::class)
@@ -246,7 +246,7 @@ class UserSkillServiceTest {
         }.isInstanceOf(EntryNotFoundException::class.java)
             .satisfies({ ex ->
                 val e = ex as EntryNotFoundException
-                assertThat(e.errorCode).isEqualTo(GlobalErrorCode.NOT_FOUND)
+                assertThat(e.errorCode).isEqualTo(GlobalErrorCode.USER_SKILL_NOT_FOUND)
             })
 
         verify(exactly = 0) { userSkillRepo.delete(any()) }
@@ -263,6 +263,10 @@ class UserSkillServiceTest {
         assertThatThrownBy {
             userSkillService.deleteSkill(user, otherUsersSkill.id)
         }.isInstanceOf(AccessDeniedException::class.java)
+            .satisfies({ ex ->
+                val e = ex as AccessDeniedException
+                assertThat(e.errorCode).isEqualTo(GlobalErrorCode.USER_SKILL_ACCESS_DENIED)
+            })
 
         verify(exactly = 0) { userSkillRepo.delete(any()) }
     }

@@ -6,6 +6,8 @@ enum class GlobalErrorCode(
     // Authentication
     BAD_CREDENTIALS("Bad credentials."),
     FORBIDDEN("Forbidden."),
+    PROJECT_ACCESS_DENIED("Not allowed to modify this project."),
+    USER_SKILL_ACCESS_DENIED("Not allowed to modify this user skill."),
     USER_MUST_LOGIN("User must be logged in."),
 
     // Validation
@@ -23,6 +25,9 @@ enum class GlobalErrorCode(
     ROLE_NOT_FOUND("Role could not be found."),
     USER_NOT_FOUND("User could not be found."),
     REFRESH_TOKEN_NOT_FOUND("Refresh token could not be found."),
+    PROJECT_NOT_FOUND("Project could not be found."),
+    SKILL_NOT_FOUND("Skill could not be found."),
+    USER_SKILL_NOT_FOUND("User skill could not be found."),
 
     // Invitation
     INVALID_INVITATION_TOKEN("Invitation token is invalid."),

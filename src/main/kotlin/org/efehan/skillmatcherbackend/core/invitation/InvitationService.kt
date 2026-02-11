@@ -1,6 +1,5 @@
 package org.efehan.skillmatcherbackend.core.invitation
 
-import jakarta.transaction.Transactional
 import org.efehan.skillmatcherbackend.config.properties.InvitationProperties
 import org.efehan.skillmatcherbackend.config.properties.JwtProperties
 import org.efehan.skillmatcherbackend.core.auth.AuthResponse
@@ -21,6 +20,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Instant
 import java.time.temporal.ChronoUnit

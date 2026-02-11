@@ -53,3 +53,4 @@ Report unter `build/reports/jacoco/test/html/index.html`. Minimum: 80%.
 ```bash
 ./gradlew ktlintCheck
 ```
+Proprietär – Nur für internen Gebrauch.
