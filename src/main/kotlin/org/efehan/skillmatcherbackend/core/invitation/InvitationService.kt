@@ -55,12 +55,12 @@ class InvitationService(
         )
 
         emailService.sendInvitationEmail(user, rawToken, invitationProperties.tokenExpirationHours)
-        logger.info("Invitation created for user={}", user.username)
+        logger.info("Invitation created for user={}", user.email)
     }
 
     fun validateInvitation(rawToken: String): ValidateInvitationResponse {
         val invitation = findValidInvitation(rawToken)
-        logger.info("Invitation validated for user={}", invitation.user.username)
+        logger.info("Invitation validated for user={}", invitation.user.email)
         return ValidateInvitationResponse(
             valid = true,
             email = invitation.user.email,
@@ -70,14 +70,18 @@ class InvitationService(
     fun acceptInvitation(
         rawToken: String,
         newPassword: String,
+        firstName: String,
+        lastName: String,
     ): AuthResponse {
         val invitation = findValidInvitation(rawToken)
 
         passwordValidationService.validateOrThrow(newPassword)
 
-        logger.info("Accepting invitation for user={}", invitation.user.username)
+        logger.info("Accepting invitation for user={}", invitation.user.email)
         val user = invitation.user
         user.passwordHash = passwordEncoder.encode(newPassword)
+        user.firstName = firstName
+        user.lastName = lastName
         user.isEnabled = true
         userRepository.save(user)
 

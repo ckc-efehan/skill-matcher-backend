@@ -42,7 +42,6 @@ class CustomUserDetailsServiceTest {
         val role = RoleModel(name = roleName, description = null)
         val user =
             UserModel(
-                username = "testuser",
                 email = email,
                 passwordHash = passwordHash,
                 firstName = "Test",

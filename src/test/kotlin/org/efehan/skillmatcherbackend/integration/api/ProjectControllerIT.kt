@@ -31,7 +31,6 @@ class ProjectControllerIT : AbstractIntegrationTest() {
         val role = roleRepository.save(RoleModel("PROJECTMANAGER", null))
         val user =
             UserModel(
-                username = "max.mustermann",
                 email = "max@firma.de",
                 passwordHash = passwordEncoder.encode("Test-Password1!"),
                 firstName = "Max",
@@ -48,7 +47,6 @@ class ProjectControllerIT : AbstractIntegrationTest() {
         val role = roleRepository.findByName("EMPLOYER")!!
         val user =
             UserModel(
-                username = "employer.user",
                 email = "employer@firma.de",
                 passwordHash = passwordEncoder.encode("Test-Password1!"),
                 firstName = "Employer",
@@ -64,7 +62,6 @@ class ProjectControllerIT : AbstractIntegrationTest() {
         val role = roleRepository.findByName("PROJECTMANAGER")!!
         val user =
             UserModel(
-                username = "other.pm",
                 email = "other.pm@firma.de",
                 passwordHash = passwordEncoder.encode("Test-Password1!"),
                 firstName = "Other",

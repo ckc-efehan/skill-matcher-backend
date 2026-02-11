@@ -15,18 +15,12 @@ import org.springframework.stereotype.Repository
     name = "users",
     indexes = [
         Index(
-            name = "idx_users_username",
-            columnList = "username",
-        ),
-        Index(
             name = "idx_users_email",
             columnList = "email",
         ),
     ],
 )
 class UserModel(
-    @Column(name = "username", nullable = true)
-    var username: String?,
     @Column(name = "email", nullable = false, unique = true)
     val email: String,
     @Column(name = "password_hash", nullable = true)
@@ -46,8 +40,6 @@ class UserModel(
 @Repository
 interface UserRepository : JpaRepository<UserModel, String> {
     fun findByEmail(email: String): UserModel?
-
-    fun existsByUsername(username: String): Boolean
 
     fun existsByEmail(email: String): Boolean
 }

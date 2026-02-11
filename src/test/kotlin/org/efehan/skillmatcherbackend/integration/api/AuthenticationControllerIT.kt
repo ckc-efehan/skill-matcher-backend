@@ -31,7 +31,6 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
         val role = roleRepository.save(RoleModel("ADMIN", null))
         val user =
             UserModel(
-                username = "testuser",
                 email = "test@example.com",
                 passwordHash = passwordEncoder.encode(password),
                 firstName = "Test",
@@ -81,7 +80,6 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
         val role = roleRepository.save(RoleModel("ADMIN", null))
         val user =
             UserModel(
-                username = "testuser",
                 email = "test@example.com",
                 passwordHash = passwordEncoder.encode("Secret-Password1!"),
                 firstName = "Test",
@@ -109,7 +107,6 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
         val role = roleRepository.save(RoleModel("ADMIN", null))
         val user =
             UserModel(
-                username = "testuser",
                 email = "test@example.com",
                 passwordHash = passwordEncoder.encode(password),
                 firstName = "Test",
@@ -169,7 +166,6 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
         val role = roleRepository.save(RoleModel("ADMIN", null))
         val user =
             UserModel(
-                username = "testuser",
                 email = "test@example.com",
                 passwordHash = passwordEncoder.encode("Secret-Password1!"),
                 firstName = "Test",
@@ -305,7 +301,6 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
         val role = roleRepository.save(RoleModel("ADMIN", null))
         val user =
             UserModel(
-                username = "testuser",
                 email = "test@example.com",
                 passwordHash = passwordEncoder.encode("Secret-Password1!"),
                 firstName = "Test",

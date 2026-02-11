@@ -32,7 +32,6 @@ class PasswordResetControllerIT : AbstractIntegrationTest() {
         val role = roleRepository.save(RoleModel("ADMIN", null))
         val user =
             UserModel(
-                username = "testuser",
                 email = email,
                 passwordHash = passwordEncoder.encode(password),
                 firstName = "Test",

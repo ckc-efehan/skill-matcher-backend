@@ -37,7 +37,6 @@ class UserSkillServiceTest {
 
     private val user =
         UserModel(
-            username = "max.mustermann",
             email = "max@firma.de",
             passwordHash = "hashed",
             firstName = "Max",
@@ -47,7 +46,6 @@ class UserSkillServiceTest {
 
     private val otherUser =
         UserModel(
-            username = "other.user",
             email = "other@firma.de",
             passwordHash = "hashed",
             firstName = "Other",

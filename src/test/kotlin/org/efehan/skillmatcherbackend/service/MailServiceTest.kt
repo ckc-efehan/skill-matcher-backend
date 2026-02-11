@@ -42,7 +42,6 @@ class MailServiceTest {
     private fun buildTestUser(): UserModel {
         val role = RoleModel("EMPLOYER", null)
         return UserModel(
-            username = "max.mustermann",
             email = "max@firma.de",
             passwordHash = null,
             firstName = "Max",

@@ -61,7 +61,6 @@ class JwtServiceTest {
         val role = RoleModel("ADMIN", null)
         testUser =
             UserModel(
-                username = "testuser",
                 email = "test@example.com",
                 passwordHash = "hashed",
                 firstName = "Test",
@@ -220,7 +219,6 @@ class JwtServiceTest {
         val otherRole = RoleModel("EMPLOYER", null)
         val otherUser =
             UserModel(
-                username = "other",
                 email = "other@example.com",
                 passwordHash = "hashed",
                 firstName = "Other",

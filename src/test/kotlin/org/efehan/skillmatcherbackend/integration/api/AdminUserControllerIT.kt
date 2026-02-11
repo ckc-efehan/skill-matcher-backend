@@ -28,7 +28,6 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
         val role = roleRepository.save(RoleModel("ADMIN", null))
         val admin =
             UserModel(
-                username = "admin",
                 email = "admin@firma.de",
                 passwordHash = passwordEncoder.encode("Admin-Password1!"),
                 firstName = "Admin",
@@ -44,7 +43,6 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
         val role = roleRepository.save(RoleModel("EMPLOYER", null))
         val user =
             UserModel(
-                username = "employer",
                 email = "employer@firma.de",
                 passwordHash = passwordEncoder.encode("User-Password1!"),
                 firstName = "Normal",
@@ -64,8 +62,6 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
 
         val request =
             CreateUserRequest(
-                firstName = "Max",
-                lastName = "Mustermann",
                 email = "max.mustermann@firma.de",
                 role = "EMPLOYER",
             )
@@ -77,10 +73,7 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
                 withBodyRequest(request)
             }.andExpect {
                 status { isCreated() }
-                jsonPath("$.username") { value("max.mustermann") }
                 jsonPath("$.email") { value("max.mustermann@firma.de") }
-                jsonPath("$.firstName") { value("Max") }
-                jsonPath("$.lastName") { value("Mustermann") }
                 jsonPath("$.role") { value("EMPLOYER") }
                 jsonPath("$.id") { isNotEmpty() }
             }
@@ -93,8 +86,6 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
 
         val request =
             CreateUserRequest(
-                firstName = "Admin",
-                lastName = "User",
                 email = "admin@firma.de",
                 role = "ADMIN",
             )
@@ -117,8 +108,6 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
 
         val request =
             CreateUserRequest(
-                firstName = "Max",
-                lastName = "Mustermann",
                 email = "max.mustermann@firma.de",
                 role = "NONEXISTENT",
             )
@@ -141,8 +130,6 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
 
         val request =
             CreateUserRequest(
-                firstName = "",
-                lastName = "",
                 email = "not-an-email",
                 role = "",
             )
@@ -165,8 +152,6 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
 
         val request =
             CreateUserRequest(
-                firstName = "Max",
-                lastName = "Mustermann",
                 email = "max.mustermann@firma.de",
                 role = "EMPLOYER",
             )
@@ -186,8 +171,6 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
         // given
         val request =
             CreateUserRequest(
-                firstName = "Max",
-                lastName = "Mustermann",
                 email = "max.mustermann@firma.de",
                 role = "EMPLOYER",
             )
@@ -208,7 +191,6 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
         val employerRole = roleRepository.save(RoleModel("EMPLOYER", null))
         val user =
             UserModel(
-                username = "max.mustermann",
                 email = "max@firma.de",
                 passwordHash = passwordEncoder.encode("Test-Password1!"),
                 firstName = "Max",
@@ -277,7 +259,6 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
         val employerRole = roleRepository.save(RoleModel("EMPLOYER", null))
         val user =
             UserModel(
-                username = "max.mustermann",
                 email = "max@firma.de",
                 passwordHash = passwordEncoder.encode("Test-Password1!"),
                 firstName = "Max",
@@ -309,7 +290,6 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
         val employerRole = roleRepository.save(RoleModel("EMPLOYER", null))
         val user =
             UserModel(
-                username = "max.mustermann",
                 email = "max@firma.de",
                 passwordHash = passwordEncoder.encode("Test-Password1!"),
                 firstName = "Max",
@@ -389,7 +369,6 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
         roleRepository.save(RoleModel("PROJECTMANAGER", null))
         val user =
             UserModel(
-                username = "max.mustermann",
                 email = "max@firma.de",
                 passwordHash = passwordEncoder.encode("Test-Password1!"),
                 firstName = "Max",
@@ -437,7 +416,6 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
         val employerRole = roleRepository.save(RoleModel("EMPLOYER", null))
         val user =
             UserModel(
-                username = "max.mustermann",
                 email = "max@firma.de",
                 passwordHash = passwordEncoder.encode("Test-Password1!"),
                 firstName = "Max",

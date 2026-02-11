@@ -103,11 +103,10 @@ class InvitationServiceTest {
         val role = RoleModel("EMPLOYER", null)
         val user =
             UserModel(
-                username = "max.mustermann",
                 email = "max@firma.de",
                 passwordHash = null,
-                firstName = "Max",
-                lastName = "Mustermann",
+                firstName = null,
+                lastName = null,
                 role = role,
             )
         user.isEnabled = false
@@ -253,12 +252,14 @@ class InvitationServiceTest {
         every { refreshTokenRepository.save(any()) } returnsArgument 0
 
         // when
-        val result = invitationService.acceptInvitation(RAW_TOKEN, "NewPassword1!")
+        val result = invitationService.acceptInvitation(RAW_TOKEN, "NewPassword1!", "Max", "Mustermann")
 
         // then
         assertThat(result.accessToken).isEqualTo(ACCESS_TOKEN)
         assertThat(result.refreshToken).isEqualTo(REFRESH_TOKEN)
         assertThat(user.passwordHash).isEqualTo("encoded-password")
+        assertThat(user.firstName).isEqualTo("Max")
+        assertThat(user.lastName).isEqualTo("Mustermann")
         assertThat(user.isEnabled).isTrue()
         assertThat(invitation.used).isTrue()
     }
@@ -271,7 +272,7 @@ class InvitationServiceTest {
 
         // then
         assertThatThrownBy {
-            invitationService.acceptInvitation(RAW_TOKEN, "NewPassword1!")
+            invitationService.acceptInvitation(RAW_TOKEN, "NewPassword1!", "Max", "Mustermann")
         }.isInstanceOf(InvalidTokenException::class.java)
             .satisfies({ ex ->
                 val e = ex as InvalidTokenException
@@ -296,7 +297,7 @@ class InvitationServiceTest {
 
         // then
         assertThatThrownBy {
-            invitationService.acceptInvitation(RAW_TOKEN, "NewPassword1!")
+            invitationService.acceptInvitation(RAW_TOKEN, "NewPassword1!", "Max", "Mustermann")
         }.isInstanceOf(InvalidTokenException::class.java)
             .satisfies({ ex ->
                 val e = ex as InvalidTokenException
@@ -321,7 +322,7 @@ class InvitationServiceTest {
 
         // then
         assertThatThrownBy {
-            invitationService.acceptInvitation(RAW_TOKEN, "NewPassword1!")
+            invitationService.acceptInvitation(RAW_TOKEN, "NewPassword1!", "Max", "Mustermann")
         }.isInstanceOf(InvalidTokenException::class.java)
             .satisfies({ ex ->
                 val e = ex as InvalidTokenException
@@ -352,7 +353,7 @@ class InvitationServiceTest {
 
         // then
         assertThatThrownBy {
-            invitationService.acceptInvitation(RAW_TOKEN, "weak")
+            invitationService.acceptInvitation(RAW_TOKEN, "weak", "Max", "Mustermann")
         }.isInstanceOf(org.efehan.skillmatcherbackend.shared.exceptions.PasswordValidationException::class.java)
 
         verify(exactly = 0) { userRepository.save(any()) }

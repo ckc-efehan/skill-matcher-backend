@@ -53,8 +53,6 @@ class AdminUserServiceTest {
         // given
         val request =
             CreateUserRequest(
-                firstName = "Max",
-                lastName = "Mustermann",
                 email = "max.mustermann@firma.de",
                 role = "EMPLOYER",
             )
@@ -63,7 +61,6 @@ class AdminUserServiceTest {
 
         every { userRepository.existsByEmail(request.email) } returns false
         every { roleRepository.findByName("EMPLOYER") } returns role
-        every { userRepository.existsByUsername("max.mustermann") } returns false
         every { userRepository.save(capture(userSlot)) } returnsArgument 0
         every { invitationService.createAndSendInvitation(any()) } just runs
 
@@ -71,43 +68,16 @@ class AdminUserServiceTest {
         val result = adminUserService.createUser(request)
 
         // then
-        assertThat(result.username).isEqualTo("max.mustermann")
         assertThat(result.email).isEqualTo("max.mustermann@firma.de")
-        assertThat(result.firstName).isEqualTo("Max")
-        assertThat(result.lastName).isEqualTo("Mustermann")
         assertThat(result.role).isEqualTo("EMPLOYER")
 
         val savedUser = userSlot.captured
         assertThat(savedUser.isEnabled).isFalse()
         assertThat(savedUser.passwordHash).isNull()
+        assertThat(savedUser.firstName).isNull()
+        assertThat(savedUser.lastName).isNull()
 
         verify(exactly = 1) { invitationService.createAndSendInvitation(any()) }
-    }
-
-    @Test
-    fun `createUser appends suffix when username already exists`() {
-        // given
-        val request =
-            CreateUserRequest(
-                firstName = "Max",
-                lastName = "Mustermann",
-                email = "max.mustermann2@firma.de",
-                role = "EMPLOYER",
-            )
-        val role = RoleModel("EMPLOYER", null)
-
-        every { userRepository.existsByEmail(request.email) } returns false
-        every { roleRepository.findByName("EMPLOYER") } returns role
-        every { userRepository.existsByUsername("max.mustermann") } returns true
-        every { userRepository.existsByUsername("max.mustermann2") } returns false
-        every { userRepository.save(any()) } returnsArgument 0
-        every { invitationService.createAndSendInvitation(any()) } just runs
-
-        // when
-        val result = adminUserService.createUser(request)
-
-        // then
-        assertThat(result.username).isEqualTo("max.mustermann2")
     }
 
     @Test
@@ -115,8 +85,6 @@ class AdminUserServiceTest {
         // given
         val request =
             CreateUserRequest(
-                firstName = "Max",
-                lastName = "Mustermann",
                 email = "max.mustermann@firma.de",
                 role = "EMPLOYER",
             )
@@ -140,8 +108,6 @@ class AdminUserServiceTest {
         // given
         val request =
             CreateUserRequest(
-                firstName = "Max",
-                lastName = "Mustermann",
                 email = "max.mustermann@firma.de",
                 role = "INVALID_ROLE",
             )
@@ -162,26 +128,10 @@ class AdminUserServiceTest {
     }
 
     @Test
-    fun `normalizeForUsername handles umlauts correctly`() {
-        assertThat(adminUserService.normalizeForUsername("Müller")).isEqualTo("mueller")
-        assertThat(adminUserService.normalizeForUsername("Böhm")).isEqualTo("boehm")
-        assertThat(adminUserService.normalizeForUsername("Lüders")).isEqualTo("lueders")
-        assertThat(adminUserService.normalizeForUsername("Straße")).isEqualTo("strasse")
-    }
-
-    @Test
-    fun `normalizeForUsername removes accents and special characters`() {
-        assertThat(adminUserService.normalizeForUsername("René")).isEqualTo("rene")
-        assertThat(adminUserService.normalizeForUsername("O'Brien")).isEqualTo("obrien")
-    }
-
-    @Test
     fun `createUser converts role to uppercase`() {
         // given
         val request =
             CreateUserRequest(
-                firstName = "Max",
-                lastName = "Mustermann",
                 email = "max.mustermann@firma.de",
                 role = "employer",
             )
@@ -189,7 +139,6 @@ class AdminUserServiceTest {
 
         every { userRepository.existsByEmail(request.email) } returns false
         every { roleRepository.findByName("EMPLOYER") } returns role
-        every { userRepository.existsByUsername("max.mustermann") } returns false
         every { userRepository.save(any()) } returnsArgument 0
         every { invitationService.createAndSendInvitation(any()) } just runs
 
@@ -207,7 +156,6 @@ class AdminUserServiceTest {
         val role = RoleModel("EMPLOYER", null)
         val user =
             UserModel(
-                username = "max.mustermann",
                 email = "max@firma.de",
                 passwordHash = "hashed",
                 firstName = "Max",
@@ -235,7 +183,6 @@ class AdminUserServiceTest {
         val role = RoleModel("EMPLOYER", null)
         val user =
             UserModel(
-                username = "max.mustermann",
                 email = "max@firma.de",
                 passwordHash = "hashed",
                 firstName = "Max",
@@ -275,7 +222,6 @@ class AdminUserServiceTest {
         val role1 = RoleModel("EMPLOYER", null)
         val user1 =
             UserModel(
-                username = "max.mustermann",
                 email = "max@firma.de",
                 passwordHash = "hashed",
                 firstName = "Max",
@@ -287,7 +233,6 @@ class AdminUserServiceTest {
         val role2 = RoleModel("ADMIN", null)
         val user2 =
             UserModel(
-                username = "admin",
                 email = "admin@firma.de",
                 passwordHash = "hashed",
                 firstName = "Admin",
@@ -329,7 +274,6 @@ class AdminUserServiceTest {
         val oldRole = RoleModel("EMPLOYER", null)
         val user =
             UserModel(
-                username = "max.mustermann",
                 email = "max@firma.de",
                 passwordHash = "hashed",
                 firstName = "Max",
@@ -359,7 +303,6 @@ class AdminUserServiceTest {
         val role = RoleModel("EMPLOYER", null)
         val user =
             UserModel(
-                username = "max.mustermann",
                 email = "max@firma.de",
                 passwordHash = "hashed",
                 firstName = "Max",
@@ -400,7 +343,6 @@ class AdminUserServiceTest {
         val role = RoleModel("EMPLOYER", null)
         val user =
             UserModel(
-                username = "max.mustermann",
                 email = "max@firma.de",
                 passwordHash = "hashed",
                 firstName = "Max",
