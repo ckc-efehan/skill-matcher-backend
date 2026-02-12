@@ -1,0 +1,344 @@
+package org.efehan.skillmatcherbackend.service
+
+import io.mockk.every
+import io.mockk.impl.annotations.MockK
+import io.mockk.junit5.MockKExtension
+import io.mockk.verify
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.efehan.skillmatcherbackend.core.projectskill.ProjectSkillService
+import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
+import org.efehan.skillmatcherbackend.persistence.ProjectModel
+import org.efehan.skillmatcherbackend.persistence.ProjectRepository
+import org.efehan.skillmatcherbackend.persistence.ProjectSkillModel
+import org.efehan.skillmatcherbackend.persistence.ProjectSkillRepository
+import org.efehan.skillmatcherbackend.persistence.ProjectStatus
+import org.efehan.skillmatcherbackend.persistence.RoleModel
+import org.efehan.skillmatcherbackend.persistence.SkillModel
+import org.efehan.skillmatcherbackend.persistence.SkillRepository
+import org.efehan.skillmatcherbackend.persistence.UserModel
+import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
+import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import java.time.LocalDate
+import java.util.Optional
+
+@ExtendWith(MockKExtension::class)
+@DisplayName("ProjectSkillService Unit Tests")
+class ProjectSkillServiceTest {
+    @MockK
+    private lateinit var projectRepo: ProjectRepository
+
+    @MockK
+    private lateinit var skillRepo: SkillRepository
+
+    @MockK
+    private lateinit var projectSkillRepo: ProjectSkillRepository
+
+    private lateinit var projectSkillService: ProjectSkillService
+
+    private val role = RoleModel("PROJECTMANAGER", null)
+
+    private val owner =
+        UserModel(
+            email = "max@firma.de",
+            passwordHash = "hashed",
+            firstName = "Max",
+            lastName = "Mustermann",
+            role = role,
+        )
+
+    private val otherOwner =
+        UserModel(
+            email = "other@firma.de",
+            passwordHash = "hashed",
+            firstName = "Other",
+            lastName = "PM",
+            role = role,
+        )
+
+    private val project =
+        ProjectModel(
+            name = "Skill Matcher",
+            description = "Internal tool",
+            status = ProjectStatus.PLANNED,
+            startDate = LocalDate.of(2026, 3, 1),
+            endDate = LocalDate.of(2026, 9, 1),
+            maxMembers = 5,
+            owner = owner,
+        )
+
+    private val otherProject =
+        ProjectModel(
+            name = "Other Project",
+            description = "Other tool",
+            status = ProjectStatus.ACTIVE,
+            startDate = LocalDate.of(2026, 4, 1),
+            endDate = LocalDate.of(2026, 10, 1),
+            maxMembers = 3,
+            owner = otherOwner,
+        )
+
+    @BeforeEach
+    fun setUp() {
+        projectSkillService = ProjectSkillService(projectRepo, skillRepo, projectSkillRepo)
+    }
+
+    @Test
+    fun `addOrUpdateSkill creates new skill and project skill`() {
+        // given
+        val skill = SkillModel(name = "kotlin")
+        every { projectRepo.findById(project.id) } returns Optional.of(project)
+        every { skillRepo.findByNameIgnoreCase("kotlin") } returns null
+        every { skillRepo.save(any()) } returns skill
+        every { projectSkillRepo.findByProjectAndSkillId(project, skill.id) } returns null
+        every { projectSkillRepo.save(any()) } returnsArgument 0
+
+        // when
+        val (dto, created) = projectSkillService.addOrUpdateSkill(owner, project.id, "Kotlin", 3)
+
+        // then
+        assertThat(created).isTrue()
+        assertThat(dto.name).isEqualTo("kotlin")
+        assertThat(dto.level).isEqualTo(3)
+        verify(exactly = 1) { skillRepo.save(any()) }
+        verify(exactly = 1) { projectSkillRepo.save(any()) }
+    }
+
+    @Test
+    fun `addOrUpdateSkill reuses existing skill`() {
+        // given
+        val skill = SkillModel(name = "java")
+        every { projectRepo.findById(project.id) } returns Optional.of(project)
+        every { skillRepo.findByNameIgnoreCase("java") } returns skill
+        every { projectSkillRepo.findByProjectAndSkillId(project, skill.id) } returns null
+        every { projectSkillRepo.save(any()) } returnsArgument 0
+
+        // when
+        val (dto, created) = projectSkillService.addOrUpdateSkill(owner, project.id, "Java", 4)
+
+        // then
+        assertThat(created).isTrue()
+        assertThat(dto.name).isEqualTo("java")
+        assertThat(dto.level).isEqualTo(4)
+        verify(exactly = 0) { skillRepo.save(any()) }
+    }
+
+    @Test
+    fun `addOrUpdateSkill updates level when project already has the skill`() {
+        // given
+        val skill = SkillModel(name = "kotlin")
+        val existingProjectSkill = ProjectSkillModel(project = project, skill = skill, level = 2)
+        every { projectRepo.findById(project.id) } returns Optional.of(project)
+        every { skillRepo.findByNameIgnoreCase("kotlin") } returns skill
+        every { projectSkillRepo.findByProjectAndSkillId(project, skill.id) } returns existingProjectSkill
+        every { projectSkillRepo.save(any()) } returnsArgument 0
+
+        // when
+        val (dto, created) = projectSkillService.addOrUpdateSkill(owner, project.id, "Kotlin", 5)
+
+        // then
+        assertThat(created).isFalse()
+        assertThat(dto.level).isEqualTo(5)
+        verify(exactly = 0) { skillRepo.save(any()) }
+    }
+
+    @Test
+    fun `addOrUpdateSkill trims and lowercases skill name`() {
+        // given
+        val skill = SkillModel(name = "spring boot")
+        every { projectRepo.findById(project.id) } returns Optional.of(project)
+        every { skillRepo.findByNameIgnoreCase("spring boot") } returns skill
+        every { projectSkillRepo.findByProjectAndSkillId(project, skill.id) } returns null
+        every { projectSkillRepo.save(any()) } returnsArgument 0
+
+        // when
+        val (dto, _) = projectSkillService.addOrUpdateSkill(owner, project.id, "  Spring Boot  ", 3)
+
+        // then
+        assertThat(dto.name).isEqualTo("spring boot")
+        verify { skillRepo.findByNameIgnoreCase("spring boot") }
+    }
+
+    @Test
+    fun `addOrUpdateSkill throws when level is below 1`() {
+        // then
+        assertThatThrownBy {
+            projectSkillService.addOrUpdateSkill(owner, project.id, "Kotlin", 0)
+        }.isInstanceOf(IllegalArgumentException::class.java)
+
+        verify(exactly = 0) { projectSkillRepo.save(any()) }
+    }
+
+    @Test
+    fun `addOrUpdateSkill throws when level is above 5`() {
+        // then
+        assertThatThrownBy {
+            projectSkillService.addOrUpdateSkill(owner, project.id, "Kotlin", 6)
+        }.isInstanceOf(IllegalArgumentException::class.java)
+
+        verify(exactly = 0) { projectSkillRepo.save(any()) }
+    }
+
+    @Test
+    fun `addOrUpdateSkill throws EntryNotFoundException when project not found`() {
+        // given
+        every { projectRepo.findById("nonexistent") } returns Optional.empty()
+
+        // then
+        assertThatThrownBy {
+            projectSkillService.addOrUpdateSkill(owner, "nonexistent", "Kotlin", 3)
+        }.isInstanceOf(EntryNotFoundException::class.java)
+            .satisfies({ ex ->
+                val e = ex as EntryNotFoundException
+                assertThat(e.errorCode).isEqualTo(GlobalErrorCode.PROJECT_NOT_FOUND)
+            })
+
+        verify(exactly = 0) { projectSkillRepo.save(any()) }
+    }
+
+    @Test
+    fun `addOrUpdateSkill throws AccessDeniedException when user is not project owner`() {
+        // given
+        every { projectRepo.findById(project.id) } returns Optional.of(project)
+
+        // then
+        assertThatThrownBy {
+            projectSkillService.addOrUpdateSkill(otherOwner, project.id, "Kotlin", 3)
+        }.isInstanceOf(AccessDeniedException::class.java)
+            .satisfies({ ex ->
+                val e = ex as AccessDeniedException
+                assertThat(e.errorCode).isEqualTo(GlobalErrorCode.PROJECT_ACCESS_DENIED)
+            })
+
+        verify(exactly = 0) { projectSkillRepo.save(any()) }
+    }
+
+    @Test
+    fun `getProjectSkills returns mapped DTOs`() {
+        // given
+        val skill1 = SkillModel(name = "kotlin")
+        val skill2 = SkillModel(name = "java")
+        val projectSkills =
+            listOf(
+                ProjectSkillModel(project = project, skill = skill1, level = 4),
+                ProjectSkillModel(project = project, skill = skill2, level = 3),
+            )
+        every { projectRepo.findById(project.id) } returns Optional.of(project)
+        every { projectSkillRepo.findByProject(project) } returns projectSkills
+
+        // when
+        val result = projectSkillService.getProjectSkills(owner, project.id)
+
+        // then
+        assertThat(result).hasSize(2)
+        assertThat(result[0].name).isEqualTo("kotlin")
+        assertThat(result[0].level).isEqualTo(4)
+        assertThat(result[1].name).isEqualTo("java")
+        assertThat(result[1].level).isEqualTo(3)
+    }
+
+    @Test
+    fun `getProjectSkills returns empty list when project has no skills`() {
+        // given
+        every { projectRepo.findById(project.id) } returns Optional.of(project)
+        every { projectSkillRepo.findByProject(project) } returns emptyList()
+
+        // when
+        val result = projectSkillService.getProjectSkills(owner, project.id)
+
+        // then
+        assertThat(result).isEmpty()
+    }
+
+    @Test
+    fun `getProjectSkills throws AccessDeniedException when user is not project owner`() {
+        // given
+        every { projectRepo.findById(project.id) } returns Optional.of(project)
+
+        // then
+        assertThatThrownBy {
+            projectSkillService.getProjectSkills(otherOwner, project.id)
+        }.isInstanceOf(AccessDeniedException::class.java)
+            .satisfies({ ex ->
+                val e = ex as AccessDeniedException
+                assertThat(e.errorCode).isEqualTo(GlobalErrorCode.PROJECT_ACCESS_DENIED)
+            })
+    }
+
+    @Test
+    fun `deleteSkill deletes project skill successfully`() {
+        // given
+        val skill = SkillModel(name = "kotlin")
+        val projectSkill = ProjectSkillModel(project = project, skill = skill, level = 3)
+        every { projectRepo.findById(project.id) } returns Optional.of(project)
+        every { projectSkillRepo.findById(projectSkill.id) } returns Optional.of(projectSkill)
+        every { projectSkillRepo.delete(projectSkill) } returns Unit
+
+        // when
+        projectSkillService.deleteSkill(owner, project.id, projectSkill.id)
+
+        // then
+        verify(exactly = 1) { projectSkillRepo.delete(projectSkill) }
+    }
+
+    @Test
+    fun `deleteSkill throws EntryNotFoundException when skill not found`() {
+        // given
+        every { projectRepo.findById(project.id) } returns Optional.of(project)
+        every { projectSkillRepo.findById("nonexistent") } returns Optional.empty()
+
+        // then
+        assertThatThrownBy {
+            projectSkillService.deleteSkill(owner, project.id, "nonexistent")
+        }.isInstanceOf(EntryNotFoundException::class.java)
+            .satisfies({ ex ->
+                val e = ex as EntryNotFoundException
+                assertThat(e.errorCode).isEqualTo(GlobalErrorCode.PROJECT_SKILL_NOT_FOUND)
+            })
+
+        verify(exactly = 0) { projectSkillRepo.delete(any()) }
+    }
+
+    @Test
+    fun `deleteSkill throws AccessDeniedException when project skill belongs to different project`() {
+        // given
+        val skill = SkillModel(name = "kotlin")
+        val otherProjectSkill = ProjectSkillModel(project = otherProject, skill = skill, level = 3)
+        every { projectRepo.findById(project.id) } returns Optional.of(project)
+        every { projectSkillRepo.findById(otherProjectSkill.id) } returns Optional.of(otherProjectSkill)
+
+        // then
+        assertThatThrownBy {
+            projectSkillService.deleteSkill(owner, project.id, otherProjectSkill.id)
+        }.isInstanceOf(AccessDeniedException::class.java)
+            .satisfies({ ex ->
+                val e = ex as AccessDeniedException
+                assertThat(e.errorCode).isEqualTo(GlobalErrorCode.PROJECT_SKILL_ACCESS_DENIED)
+            })
+
+        verify(exactly = 0) { projectSkillRepo.delete(any()) }
+    }
+
+    @Test
+    fun `deleteSkill throws AccessDeniedException when user is not project owner`() {
+        // given
+        val skill = SkillModel(name = "kotlin")
+        val projectSkill = ProjectSkillModel(project = project, skill = skill, level = 3)
+        every { projectRepo.findById(project.id) } returns Optional.of(project)
+
+        // then
+        assertThatThrownBy {
+            projectSkillService.deleteSkill(otherOwner, project.id, projectSkill.id)
+        }.isInstanceOf(AccessDeniedException::class.java)
+            .satisfies({ ex ->
+                val e = ex as AccessDeniedException
+                assertThat(e.errorCode).isEqualTo(GlobalErrorCode.PROJECT_ACCESS_DENIED)
+            })
+
+        verify(exactly = 0) { projectSkillRepo.delete(any()) }
+    }
+}
