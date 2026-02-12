@@ -11,6 +11,7 @@ class GlobalErrorCodeTest {
     val expectedBadCredentialsErrorCode = "BAD_CREDENTIALS"
     val expectedForbiddenErrorCode = "FORBIDDEN"
     val expectedProjectAccessDeniedErrorCode = "PROJECT_ACCESS_DENIED"
+    val expectedProjectSkillAccessDeniedErrorCode = "PROJECT_SKILL_ACCESS_DENIED"
     val expectedUserSkillAccessDeniedErrorCode = "USER_SKILL_ACCESS_DENIED"
     val expectedUserMustLoginErrorCode = "USER_MUST_LOGIN"
 
@@ -57,6 +58,7 @@ class GlobalErrorCodeTest {
         assertThat(expectedBadCredentialsErrorCode).isEqualTo(GlobalErrorCode.BAD_CREDENTIALS.name)
         assertThat(expectedForbiddenErrorCode).isEqualTo(GlobalErrorCode.FORBIDDEN.name)
         assertThat(expectedProjectAccessDeniedErrorCode).isEqualTo(GlobalErrorCode.PROJECT_ACCESS_DENIED.name)
+        assertThat(expectedProjectSkillAccessDeniedErrorCode).isEqualTo(GlobalErrorCode.PROJECT_SKILL_ACCESS_DENIED.name)
         assertThat(expectedUserSkillAccessDeniedErrorCode).isEqualTo(GlobalErrorCode.USER_SKILL_ACCESS_DENIED.name)
         assertThat(expectedUserMustLoginErrorCode).isEqualTo(GlobalErrorCode.USER_MUST_LOGIN.name)
 
@@ -97,7 +99,7 @@ class GlobalErrorCodeTest {
         // General
         assertThat(expectedInternalServerErrorCode).isEqualTo(GlobalErrorCode.INTERNAL_SERVER_ERROR.name)
 
-        assertThat(GlobalErrorCode.entries.size).isEqualTo(28)
+        assertThat(GlobalErrorCode.entries.size).isEqualTo(30)
     }
 
     @Test
