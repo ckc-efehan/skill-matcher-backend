@@ -142,7 +142,7 @@ class ProjectSkillController(
                                 value = """
                                 {
                                     "errorCode": "PROJECT_ACCESS_DENIED",
-                                    "errorMessage": "Not allowed to modify Project.",
+                                    "errorMessage": "Not allowed to modify this project.",
                                     "fieldErrors": []
                                 }
                                 """,
@@ -307,12 +307,22 @@ class ProjectSkillController(
             ),
             ApiResponse(
                 responseCode = "403",
-                description = "Not allowed to delete this skill.",
+                description = "Not allowed to access the project or delete this skill.",
                 content = [
                     Content(
                         mediaType = "application/json",
                         schema = Schema(implementation = GlobalErrorCodeResponse::class),
                         examples = [
+                            ExampleObject(
+                                name = "Project access denied",
+                                value = """
+                                {
+                                    "errorCode": "PROJECT_ACCESS_DENIED",
+                                    "errorMessage": "Not allowed to access Project.",
+                                    "fieldErrors": []
+                                }
+                                """,
+                            ),
                             ExampleObject(
                                 name = "Not allowed",
                                 value = """
@@ -340,7 +350,7 @@ class ProjectSkillController(
                                 value = """
                                 {
                                     "errorCode": "PROJECT_SKILL_NOT_FOUND",
-                                    "errorMessage": "ProjectSkill with id 'some-id' could not be found.",
+                                    "errorMessage": "Project skill could not be found.",
                                     "fieldErrors": []
                                 }
                                 """,
