@@ -8,6 +8,7 @@ enum class GlobalErrorCode(
     FORBIDDEN("Forbidden."),
     PROJECT_ACCESS_DENIED("Not allowed to modify this project."),
     USER_SKILL_ACCESS_DENIED("Not allowed to modify this user skill."),
+    PROJECT_SKILL_ACCESS_DENIED("Not allowed to modify this project skill."),
     USER_MUST_LOGIN("User must be logged in."),
 
     // Validation
@@ -28,6 +29,7 @@ enum class GlobalErrorCode(
     PROJECT_NOT_FOUND("Project could not be found."),
     SKILL_NOT_FOUND("Skill could not be found."),
     USER_SKILL_NOT_FOUND("User skill could not be found."),
+    PROJECT_SKILL_NOT_FOUND("Project skill could not be found."),
 
     // Matching
     PROJECT_SKILL_NOT_FOUND("Project skill could not be found."),
