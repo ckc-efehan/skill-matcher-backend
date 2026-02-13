@@ -31,7 +31,7 @@ class ProjectSkillController(
     @Operation(
         summary = "Add or update a project skill",
         description =
-            "Adds a new skill to a project or updates the level if the skill already exists. " +
+            "Adds a new skill to a project or updates the level and priority if the skill already exists. " +
                 "Only the project owner can modify skills.",
     )
     @ApiResponses(
@@ -50,7 +50,8 @@ class ProjectSkillController(
                                 {
                                     "id": "550e8400-e29b-41d4-a716-446655440000",
                                     "name": "kotlin",
-                                    "level": 4
+                                    "level": 4,
+                                    "priority": "MUST_HAVE"
                                 }
                                 """,
                             ),
@@ -72,7 +73,8 @@ class ProjectSkillController(
                                 {
                                     "id": "550e8400-e29b-41d4-a716-446655440000",
                                     "name": "kotlin",
-                                    "level": 5
+                                    "level": 5,
+                                    "priority": "NICE_TO_HAVE"
                                 }
                                 """,
                             ),
@@ -182,7 +184,7 @@ class ProjectSkillController(
         @PathVariable projectId: String,
         @Valid @RequestBody req: AddProjectSkillRequest,
     ): ResponseEntity<ProjectSkillDto> {
-        val (dto, created) = service.addOrUpdateSkill(securityUser.user, projectId, req.name, req.level)
+        val (dto, created) = service.addOrUpdateSkill(securityUser.user, projectId, req.name, req.level, req.priority)
         val status = if (created) HttpStatus.CREATED else HttpStatus.OK
         return ResponseEntity.status(status).body(dto)
     }

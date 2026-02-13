@@ -75,7 +75,7 @@ class ProjectSkillControllerIT : AbstractIntegrationTest() {
         // given
         val (owner, token) = createProjectManagerAndGetToken()
         val project = createProject(owner)
-        val request = AddProjectSkillRequest(name = "Kotlin", level = 4)
+        val request = AddProjectSkillRequest(name = "Kotlin", level = 4, priority = "NICE_TO_HAVE")
 
         // when & then
         mockMvc
@@ -87,6 +87,7 @@ class ProjectSkillControllerIT : AbstractIntegrationTest() {
                 jsonPath("$.id") { isNotEmpty() }
                 jsonPath("$.name") { value("kotlin") }
                 jsonPath("$.level") { value(4) }
+                jsonPath("$.priority") { value("NICE_TO_HAVE") }
             }
     }
 
@@ -98,7 +99,7 @@ class ProjectSkillControllerIT : AbstractIntegrationTest() {
         val skill = skillRepository.save(SkillModel(name = "kotlin"))
         projectSkillRepository.save(ProjectSkillModel(project = project, skill = skill, level = 2))
 
-        val request = AddProjectSkillRequest(name = "Kotlin", level = 5)
+        val request = AddProjectSkillRequest(name = "Kotlin", level = 5, priority = "NICE_TO_HAVE")
 
         // when & then
         mockMvc
@@ -109,6 +110,7 @@ class ProjectSkillControllerIT : AbstractIntegrationTest() {
                 status { isOk() }
                 jsonPath("$.name") { value("kotlin") }
                 jsonPath("$.level") { value(5) }
+                jsonPath("$.priority") { value("NICE_TO_HAVE") }
             }
     }
 
@@ -154,6 +156,24 @@ class ProjectSkillControllerIT : AbstractIntegrationTest() {
         val (owner, token) = createProjectManagerAndGetToken()
         val project = createProject(owner)
         val request = AddProjectSkillRequest(name = "  ", level = 3)
+
+        // when & then
+        mockMvc
+            .post("/api/projects/${project.id}/skills") {
+                header("Authorization", "Bearer $token")
+                withBodyRequest(request)
+            }.andExpect {
+                status { isBadRequest() }
+                jsonPath("$.errorCode") { value("VALIDATION_ERROR") }
+            }
+    }
+
+    @Test
+    fun `should return 400 when priority is invalid`() {
+        // given
+        val (owner, token) = createProjectManagerAndGetToken()
+        val project = createProject(owner)
+        val request = AddProjectSkillRequest(name = "Kotlin", level = 3, priority = "invalid")
 
         // when & then
         mockMvc
