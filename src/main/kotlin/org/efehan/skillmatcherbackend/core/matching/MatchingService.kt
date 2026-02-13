@@ -298,10 +298,8 @@ class MatchingService(
         // berechne wie viele tage des projektzeitraums durch verfügbarkeit abgedeckt sind
         val coveredDays =
             availabilities.sumOf { avail ->
-                val overlapStart =
-                    if (projectStart.isAfter(avail.availableFrom)) projectStart else avail.availableFrom
-                val overlapEnd =
-                    if (projectEnd.isBefore(avail.availableTo)) projectEnd else avail.availableTo
+                val overlapStart = maxOf(projectStart, avail.availableFrom)
+                val overlapEnd = minOf(projectEnd, avail.availableTo)
                 val overlap = ChronoUnit.DAYS.between(overlapStart, overlapEnd)
                 if (overlap > 0) overlap else 0L
             }

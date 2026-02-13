@@ -8,7 +8,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
-import java.time.Instant
+import java.time.LocalDate
 
 @Entity
 @Table(
@@ -22,9 +22,9 @@ class UserAvailabilityModel(
     @JoinColumn(name = "user_id", nullable = false)
     val user: UserModel,
     @Column(name = "available_from", nullable = false)
-    var availableFrom: Instant,
+    var availableFrom: LocalDate,
     @Column(name = "available_to", nullable = false)
-    var availableTo: Instant,
+    var availableTo: LocalDate,
 ): AuditingBaseEntity()
 
 @Repository

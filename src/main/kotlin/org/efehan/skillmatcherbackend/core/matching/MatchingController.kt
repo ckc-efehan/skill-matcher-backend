@@ -1,7 +1,14 @@
 package org.efehan.skillmatcherbackend.core.matching
 
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.ExampleObject
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.efehan.skillmatcherbackend.core.auth.SecurityUser
+import org.efehan.skillmatcherbackend.exception.GlobalErrorCodeResponse
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -17,6 +24,80 @@ import org.springframework.web.bind.annotation.RestController
 class MatchingController(
     private val matchingService: MatchingService,
 ) {
+    @Operation(
+        summary = "Find matching candidates for a project",
+        description = "Returns a ranked list of users that the projects required skills."
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Matching candidates found.",
+            ),
+            ApiResponse(
+                responseCode = "401",
+                description = "Not authenticated.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not authenticated",
+                                value = """
+                                    {
+                                        "errorCode": "USER_MUST_LOGIN",
+                                        "errorMessage": "User must be logged in."
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "Not a project manager.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Forbidden",
+                                value = """
+                                {
+                                    "errorCode": "FORBIDDEN",
+                                    "errorMessage": "Forbidden."
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Project not found.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not found",
+                                value = """
+                                {
+                                    "errorCode": "PROJECT_NOT_FOUND",
+                                    "errorMessage": "Project with id '550e8400-e29b-41d4-a716-446655440000' could not be found."
+                                }
+                                """,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
     @GetMapping("/projects/{projectId}/candidates")
     @PreAuthorize("hasRole('PROJECTMANAGER')")
     fun findCandidates(
@@ -29,6 +110,38 @@ class MatchingController(
     ): ResponseEntity<List<UserMatchDto>> =
         ResponseEntity.ok(matchingService.findCandidatesForProject(projectId, minScore, limit))
 
+    @Operation(
+        summary = "Find matching projects for me",
+        description = "Returns a ranked list of projects that match the users skills.",
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Matching projects found.",
+            ),
+            ApiResponse(
+                responseCode = "401",
+                description = "Not authenticated.",
+                content = [
+                    Content(
+                        mediaType = "application/json",
+                        schema = Schema(implementation = GlobalErrorCodeResponse::class),
+                        examples = [
+                            ExampleObject(
+                                name = "Not authenticated",
+                                value = """
+                                    {
+                                        "errorCode": "USER_MUST_LOGIN",
+                                        "errorMessage": "User must be logged in."
+                                """
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
     @GetMapping("/me/projects")
     fun findProjectsForMe(
         @AuthenticationPrincipal
