@@ -36,6 +36,8 @@ class ProjectSkillModel(
 interface ProjectSkillRepository : JpaRepository<ProjectSkillModel, String> {
     fun findByProject(project: ProjectModel): List<ProjectSkillModel>
 
+    fun findByProjectIn(projects: Collection<ProjectModel>): List<ProjectSkillModel>
+
     fun findByProjectAndSkillId(
         project: ProjectModel,
         skillId: String,

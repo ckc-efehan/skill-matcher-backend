@@ -1,16 +1,16 @@
 package org.efehan.skillmatcherbackend.core.matching
 
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
-import org.efehan.skillmatcherbackend.persistence.ProjectMemberRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectMemberStatus
 import org.efehan.skillmatcherbackend.persistence.ProjectModel
 import org.efehan.skillmatcherbackend.persistence.ProjectRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectSkillModel
 import org.efehan.skillmatcherbackend.persistence.ProjectSkillRepository
+import org.efehan.skillmatcherbackend.persistence.ProjectStatus
 import org.efehan.skillmatcherbackend.persistence.SkillPriority
+import org.efehan.skillmatcherbackend.persistence.UserAvailabilityModel
 import org.efehan.skillmatcherbackend.persistence.UserAvailabilityRepository
 import org.efehan.skillmatcherbackend.persistence.UserModel
-import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.persistence.UserSkillModel
 import org.efehan.skillmatcherbackend.persistence.UserSkillRepository
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
@@ -27,8 +27,6 @@ class MatchingService(
     private val projectRepo: ProjectRepository,
     private val projectSkillRepo: ProjectSkillRepository,
     private val userSkillRepo: UserSkillRepository,
-    private val userRepo: UserRepository,
-    private val projectMemberRepo: ProjectMemberRepository,
     private val availabilityRepo: UserAvailabilityRepository,
 ) {
     companion object {
@@ -49,28 +47,30 @@ class MatchingService(
 
         if (projectSkills.isEmpty()) return emptyList()
 
-        // bereits aktive member ausschließen
-        val activeMembers =
-            projectMemberRepo
-                .findByProject(project)
-                .filter { it.status == ProjectMemberStatus.ACTIVE }
-                .map { it.user.id }
-                .toSet()
-
         // alle user laden die mind. einen projekt skill haben
         val relevantSkills = projectSkills.map { it.skill }
-        val allUserSkills = userSkillRepo.findBySkillIn(relevantSkills)
+        val allUserSkills =
+            userSkillRepo.findMatchableBySkillsForProject(
+                skills = relevantSkills,
+                project = project,
+                activeStatus = ProjectMemberStatus.ACTIVE,
+            )
 
-        val userSkillMap =
-            allUserSkills
-                .filter { it.user.id !in activeMembers }
-                .filter { it.user.isEnabled }
+        val userSkillMap = allUserSkills.groupBy { it.user.id }
+        if (userSkillMap.isEmpty()) return emptyList()
+
+        // Batch-Query: alle Availabilities für Kandidaten in einem Aufruf laden
+        val candidateUsers = userSkillMap.values.map { it.first().user }
+        val availabilityMap =
+            availabilityRepo
+                .findByUserIn(candidateUsers)
                 .groupBy { it.user.id }
 
         return userSkillMap
-            .map { (_, skills) ->
+            .map { (userId, skills) ->
                 val user = skills.first().user
-                computeUserMatch(user, skills, projectSkills, project)
+                val userAvailabilities = availabilityMap[userId].orEmpty()
+                computeUserMatch(user, skills, projectSkills, project, userAvailabilities)
             }.filter { it.score >= minScore }
             .sortedByDescending { it.score }
             .take(limit)
@@ -84,29 +84,31 @@ class MatchingService(
         val userSkills = userSkillRepo.findByUser(user)
         if (userSkills.isEmpty()) return emptyList()
 
-        // alle projekte laden die planned oder active sind
+        // Nur relevante Projekte direkt aus der DB laden
         val projects =
-            projectRepo.findAll().filter {
-                it.status.name == "PLANNED" || it.status.name == "ACTIVE"
-            }
+            projectRepo.findMatchableForUser(
+                user = user,
+                statuses = listOf(ProjectStatus.PLANNED, ProjectStatus.ACTIVE),
+                activeStatus = ProjectMemberStatus.ACTIVE,
+            )
 
-        // projekte ausschließen, bei denen der user schon aktives mitglied ist
-        val memberProjects =
-            projects
-                .filter { project ->
-                    projectMemberRepo
-                        .findByProjectAndUser(project, user)
-                        ?.let { it.status == ProjectMemberStatus.ACTIVE } == true
-                }.map { it.id }
-                .toSet()
+        if (projects.isEmpty()) return emptyList()
+
+        // batch: alle ProjectSkills für relevante Projekte in einem Aufruf
+        val projectSkillMap =
+            projectSkillRepo
+                .findByProjectIn(projects)
+                .groupBy { it.project.id }
+
+        // Availability einmal laden (selber User für alle Projekte)
+        val userAvailabilities = availabilityRepo.findByUser(user)
 
         return projects
             .asSequence()
-            .filter { it.id !in memberProjects }
             .mapNotNull { project ->
-                val projectSkills = projectSkillRepo.findByProject(project)
+                val projectSkills = projectSkillMap[project.id].orEmpty()
                 if (projectSkills.isEmpty()) return@mapNotNull null
-                computeProjectMatch(user, userSkills, project, projectSkills)
+                computeProjectMatch(user, userSkills, project, projectSkills, userAvailabilities)
             }.filter { it.score >= minScore }
             .sortedByDescending { it.score }
             .take(limit)
@@ -118,8 +120,9 @@ class MatchingService(
         userSkills: List<UserSkillModel>,
         projectSkills: List<ProjectSkillModel>,
         project: ProjectModel,
+        availabilities: List<UserAvailabilityModel>,
     ): UserMatchDto {
-        val result = computeScore(userSkills, projectSkills, user, project)
+        val result = computeScore(userSkills, projectSkills, project, availabilities)
 
         return UserMatchDto(
             userId = user.id,
@@ -137,8 +140,9 @@ class MatchingService(
         userSkills: List<UserSkillModel>,
         project: ProjectModel,
         projectSkills: List<ProjectSkillModel>,
+        availabilities: List<UserAvailabilityModel>,
     ): ProjectMatchDto {
-        val result = computeScore(userSkills, projectSkills, user, project)
+        val result = computeScore(userSkills, projectSkills, project, availabilities)
 
         return ProjectMatchDto(
             projectId = project.id,
@@ -163,8 +167,8 @@ class MatchingService(
     private fun computeScore(
         userSkills: List<UserSkillModel>,
         projectSkills: List<ProjectSkillModel>,
-        user: UserModel,
         project: ProjectModel,
+        availabilities: List<UserAvailabilityModel>,
     ): ScoreResult {
         val userSkillMap = userSkills.associateBy { it.skill.id }
 
@@ -260,7 +264,7 @@ class MatchingService(
                 } / allMatchedWithUserLevel.size / LEVEL_OVERFIT_CAP
             }
 
-        val availabilityScore = computeAvailabilityScore(user, project)
+        val availabilityScore = computeAvailabilityScore(availabilities, project)
 
         val rawScore =
             WEIGHT_MUST_HAVE * mustHaveCoverage +
@@ -285,11 +289,9 @@ class MatchingService(
     }
 
     private fun computeAvailabilityScore(
-        user: UserModel,
+        availabilities: List<UserAvailabilityModel>,
         project: ProjectModel,
     ): Double {
-        val availabilities = availabilityRepo.findByUser(user)
-
         if (availabilities.isEmpty()) return 1.0
 
         val projectStart = project.startDate
@@ -297,6 +299,7 @@ class MatchingService(
         val projectDays = ChronoUnit.DAYS.between(projectStart, projectEnd)
         if (projectDays <= 0) return 1.0
 
+        // annahme: availability einträge überlappen nicht (wird bei erstellung validiert)
         // berechne wie viele tage des projektzeitraums durch verfügbarkeit abgedeckt sind
         val coveredDays =
             availabilities.sumOf { avail ->

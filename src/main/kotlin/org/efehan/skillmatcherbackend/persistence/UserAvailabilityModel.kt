@@ -30,4 +30,6 @@ class UserAvailabilityModel(
 @Repository
 interface UserAvailabilityRepository : JpaRepository<UserAvailabilityModel, String> {
     fun findByUser(user: UserModel): List<UserAvailabilityModel>
+
+    fun findByUserIn(users: Collection<UserModel>): List<UserAvailabilityModel>
 }

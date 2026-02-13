@@ -8,6 +8,7 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 import java.time.LocalDate
 
@@ -33,7 +34,28 @@ class ProjectModel(
 ) : AuditingBaseEntity()
 
 @Repository
-interface ProjectRepository : JpaRepository<ProjectModel, String>
+interface ProjectRepository : JpaRepository<ProjectModel, String> {
+    fun findByStatusIn(statuses: Collection<ProjectStatus>): List<ProjectModel>
+
+    @Query(
+        """
+        SELECT p
+        FROM ProjectModel p
+        WHERE p.status IN :statuses
+          AND p.id NOT IN (
+              SELECT pm.project.id
+              FROM ProjectMemberModel pm
+              WHERE pm.user = :user
+                AND pm.status = :activeStatus
+          )
+        """,
+    )
+    fun findMatchableForUser(
+        user: UserModel,
+        statuses: Collection<ProjectStatus>,
+        activeStatus: ProjectMemberStatus,
+    ): List<ProjectModel>
+}
 
 enum class ProjectStatus {
     PLANNED,
