@@ -3,11 +3,13 @@ package org.efehan.skillmatcherbackend.testcontainers
 import org.efehan.skillmatcherbackend.TestcontainersConfiguration
 import org.efehan.skillmatcherbackend.persistence.InvitationTokenRepository
 import org.efehan.skillmatcherbackend.persistence.PasswordResetTokenRepository
+import org.efehan.skillmatcherbackend.persistence.ProjectMemberRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectSkillRepository
 import org.efehan.skillmatcherbackend.persistence.RefreshTokenRepository
 import org.efehan.skillmatcherbackend.persistence.RoleRepository
 import org.efehan.skillmatcherbackend.persistence.SkillRepository
+import org.efehan.skillmatcherbackend.persistence.UserAvailabilityRepository
 import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.persistence.UserSkillRepository
 import org.junit.jupiter.api.BeforeEach
@@ -59,10 +61,18 @@ abstract class AbstractIntegrationTest {
     @Autowired
     protected lateinit var projectRepository: ProjectRepository
 
+    @Autowired
+    protected lateinit var projectMemberRepository: ProjectMemberRepository
+
+    @Autowired
+    protected lateinit var userAvailabilityRepository: UserAvailabilityRepository
+
     @BeforeEach
     fun cleanUp() {
+        projectMemberRepository.deleteAll()
         projectSkillRepository.deleteAll()
         projectRepository.deleteAll()
+        userAvailabilityRepository.deleteAll()
         userSkillRepository.deleteAll()
         skillRepository.deleteAll()
         passwordResetTokenRepository.deleteAll()

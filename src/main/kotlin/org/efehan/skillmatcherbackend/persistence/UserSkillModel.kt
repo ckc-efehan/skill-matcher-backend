@@ -7,6 +7,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 
 @Entity
@@ -35,4 +36,27 @@ interface UserSkillRepository : JpaRepository<UserSkillModel, String> {
         user: UserModel,
         skillId: String,
     ): UserSkillModel?
+
+    fun findBySkillIn(skills: List<SkillModel>): List<UserSkillModel>
+
+    @Query(
+        """
+        SELECT us
+        FROM UserSkillModel us
+        WHERE us.skill IN :skills
+          AND us.user.isEnabled = true
+          AND NOT EXISTS (
+              SELECT pm.id
+              FROM ProjectMemberModel pm
+              WHERE pm.project = :project
+                AND pm.user = us.user
+                AND pm.status = :activeStatus
+          )
+        """,
+    )
+    fun findMatchableBySkillsForProject(
+        skills: Collection<SkillModel>,
+        project: ProjectModel,
+        activeStatus: ProjectMemberStatus,
+    ): List<UserSkillModel>
 }

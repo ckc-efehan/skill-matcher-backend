@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-5.0.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+    <changeSet id="fix-availability-typo-1" author="efehan">
+        <renameTable oldTableName="user_availibility" newTableName="user_availability"/>
+    </changeSet>
+    <changeSet id="fix-availability-typo-2" author="efehan">
+        <dropIndex tableName="user_availability" indexName="idx_user_availibility_user_id"/>
+        <createIndex tableName="user_availability" indexName="idx_user_availability_user_id">
+            <column name="user_id"/>
+        </createIndex>
+    </changeSet>
+    <changeSet id="fix-availability-typo-3" author="efehan">
+        <dropForeignKeyConstraint baseTableName="user_availability"
+                                  constraintName="FK_USER_AVAILIBILITY_ON_USER"/>
+        <addForeignKeyConstraint baseColumnNames="user_id" baseTableName="user_availability"
+                                 constraintName="FK_USER_AVAILABILITY_ON_USER"
+                                 referencedColumnNames="id" referencedTableName="users"/>
+    </changeSet>
+</databaseChangeLog>

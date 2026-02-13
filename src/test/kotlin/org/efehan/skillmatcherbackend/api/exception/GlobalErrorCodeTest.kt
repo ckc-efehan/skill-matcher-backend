@@ -44,6 +44,20 @@ class GlobalErrorCodeTest {
     val expectedPasswordResetTokenExpiredErrorCode = "PASSWORD_RESET_TOKEN_EXPIRED"
     val expectedPasswordResetTokenUsedErrorCode = "PASSWORD_RESET_TOKEN_USED"
 
+    // Matching
+    val expectedProjectSkillNotFoundErrorCode = "PROJECT_SKILL_NOT_FOUND"
+    val expectedProjectSkillDuplicateErrorCode = "PROJECT_SKILL_DUPLICATE"
+
+    // Project Members
+    val expectedProjectMemberNotFoundErrorCode = "PROJECT_MEMBER_NOT_FOUND"
+    val expectedProjectMemberDuplicateErrorCode = "PROJECT_MEMBER_DUPLICATE"
+    val expectedProjectFullErrorCode = "PROJECT_FULL"
+
+    // User Availability
+    val expectedUserAvailabilityNotFoundErrorCode = "USER_AVAILABILITY_NOT_FOUND"
+    val expectedUserAvailabilityAccessDeniedErrorCode = "USER_AVAILABILITY_ACCESS_DENIED"
+    val expectedUserAvailabilityOverlapErrorCode = "USER_AVAILABILITY_OVERLAP"
+
     // User state
     val expectedUserInvalidOperationErrorCode = "USER_INVALID_OPERATION"
     val expectedAccountDisabledErrorCode = "ACCOUNT_DISABLED"
@@ -91,6 +105,20 @@ class GlobalErrorCodeTest {
         assertThat(expectedPasswordResetTokenExpiredErrorCode).isEqualTo(GlobalErrorCode.PASSWORD_RESET_TOKEN_EXPIRED.name)
         assertThat(expectedPasswordResetTokenUsedErrorCode).isEqualTo(GlobalErrorCode.PASSWORD_RESET_TOKEN_USED.name)
 
+        // Matching
+        assertThat(expectedProjectSkillNotFoundErrorCode).isEqualTo(GlobalErrorCode.PROJECT_SKILL_NOT_FOUND.name)
+        assertThat(expectedProjectSkillDuplicateErrorCode).isEqualTo(GlobalErrorCode.PROJECT_SKILL_DUPLICATE.name)
+
+        // Project Members
+        assertThat(expectedProjectMemberNotFoundErrorCode).isEqualTo(GlobalErrorCode.PROJECT_MEMBER_NOT_FOUND.name)
+        assertThat(expectedProjectMemberDuplicateErrorCode).isEqualTo(GlobalErrorCode.PROJECT_MEMBER_DUPLICATE.name)
+        assertThat(expectedProjectFullErrorCode).isEqualTo(GlobalErrorCode.PROJECT_FULL.name)
+
+        // User Availability
+        assertThat(expectedUserAvailabilityNotFoundErrorCode).isEqualTo(GlobalErrorCode.USER_AVAILABILITY_NOT_FOUND.name)
+        assertThat(expectedUserAvailabilityAccessDeniedErrorCode).isEqualTo(GlobalErrorCode.USER_AVAILABILITY_ACCESS_DENIED.name)
+        assertThat(expectedUserAvailabilityOverlapErrorCode).isEqualTo(GlobalErrorCode.USER_AVAILABILITY_OVERLAP.name)
+
         // User state
         assertThat(expectedUserInvalidOperationErrorCode).isEqualTo(GlobalErrorCode.USER_INVALID_OPERATION.name)
         assertThat(expectedAccountDisabledErrorCode).isEqualTo(GlobalErrorCode.ACCOUNT_DISABLED.name)
@@ -99,7 +127,7 @@ class GlobalErrorCodeTest {
         // General
         assertThat(expectedInternalServerErrorCode).isEqualTo(GlobalErrorCode.INTERNAL_SERVER_ERROR.name)
 
-        assertThat(GlobalErrorCode.entries.size).isEqualTo(30)
+        assertThat(GlobalErrorCode.entries.size).isEqualTo(37)
     }
 
     @Test

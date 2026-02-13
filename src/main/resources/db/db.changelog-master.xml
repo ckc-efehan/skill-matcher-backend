@@ -13,5 +13,17 @@
 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
-    <includeAll path="db/changelog"/>
+    <include file="db/changelog/v0.1_init_add_user_and_role_and_refresh_token_table.xml"/>
+    <include file="db/changelog/v0.2_add_mustChangePassword_to_user.xml"/>
+    <include file="db/changelog/v0.3_change_spaltenname_from_token_to_tokenHash.xml"/>
+    <include file="db/changelog/v0.4_add_invitation_tokens_table.xml"/>
+    <include file="db/changelog/v0.5_remove_mustChangePassword_from_user.xml"/>
+    <include file="db/changelog/v0.6_add_password_reset.xml"/>
+    <include file="db/changelog/v0.7_add_skill.xml"/>
+    <include file="db/changelog/v0.8_add_projects.xml"/>
+    <include file="db/changelog/v0.9_remove_username_from_users.xml"/>
+    <include file="db/changelog/v0.10_add_user_availability.xml"/>
+    <include file="db/changelog/v0.11_fix_availability_typo.xml"/>
+    <include file="db/changelog/v0.12_add_project_member_indexes.xml"/>
+    <include file="db/changelog/v0.13_optimize_matching_indexes.xml"/>
 </databaseChangeLog>
