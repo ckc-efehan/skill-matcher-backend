@@ -29,7 +29,6 @@ enum class GlobalErrorCode(
     PROJECT_NOT_FOUND("Project could not be found."),
     SKILL_NOT_FOUND("Skill could not be found."),
     USER_SKILL_NOT_FOUND("User skill could not be found."),
-    PROJECT_SKILL_NOT_FOUND("Project skill could not be found."),
 
     // Matching
     PROJECT_SKILL_NOT_FOUND("Project skill could not be found."),

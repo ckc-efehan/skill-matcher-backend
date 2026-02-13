@@ -127,7 +127,7 @@ class GlobalErrorCodeTest {
         // General
         assertThat(expectedInternalServerErrorCode).isEqualTo(GlobalErrorCode.INTERNAL_SERVER_ERROR.name)
 
-        assertThat(GlobalErrorCode.entries.size).isEqualTo(36)
+        assertThat(GlobalErrorCode.entries.size).isEqualTo(37)
     }
 
     @Test
