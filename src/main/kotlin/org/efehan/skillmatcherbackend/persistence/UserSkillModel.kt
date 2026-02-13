@@ -35,4 +35,6 @@ interface UserSkillRepository : JpaRepository<UserSkillModel, String> {
         user: UserModel,
         skillId: String,
     ): UserSkillModel?
+
+    fun findBySkillIn(skills: List<SkillModel>): List<UserSkillModel>
 }

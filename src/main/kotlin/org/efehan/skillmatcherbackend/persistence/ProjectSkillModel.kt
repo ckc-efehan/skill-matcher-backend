@@ -2,6 +2,8 @@ package org.efehan.skillmatcherbackend.persistence
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
@@ -25,6 +27,9 @@ class ProjectSkillModel(
     val skill: SkillModel,
     @Column(nullable = false)
     var level: Int,
+    @Enumerated(EnumType.STRING)
+    @Column(name = "priority", nullable = false)
+    var priority: SkillPriority = SkillPriority.MUST_HAVE
 ) : AuditingBaseEntity()
 
 @Repository
@@ -35,4 +40,9 @@ interface ProjectSkillRepository : JpaRepository<ProjectSkillModel, String> {
         project: ProjectModel,
         skillId: String,
     ): ProjectSkillModel?
+}
+
+enum class SkillPriority {
+    MUST_HAVE,
+    NICE_TO_HAVE,
 }
