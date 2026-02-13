@@ -1,0 +1,251 @@
+package org.efehan.skillmatcherbackend.integration.api
+
+import org.efehan.skillmatcherbackend.core.auth.JwtService
+import org.efehan.skillmatcherbackend.persistence.ProjectModel
+import org.efehan.skillmatcherbackend.persistence.ProjectSkillModel
+import org.efehan.skillmatcherbackend.persistence.ProjectStatus
+import org.efehan.skillmatcherbackend.persistence.RoleModel
+import org.efehan.skillmatcherbackend.persistence.SkillModel
+import org.efehan.skillmatcherbackend.persistence.SkillPriority
+import org.efehan.skillmatcherbackend.persistence.UserModel
+import org.efehan.skillmatcherbackend.persistence.UserSkillModel
+import org.efehan.skillmatcherbackend.testcontainers.AbstractIntegrationTest
+import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.test.web.servlet.get
+import java.time.LocalDate
+
+@DisplayName("MatchingController Integration Tests")
+class MatchingControllerIT : AbstractIntegrationTest() {
+    @Autowired
+    private lateinit var passwordEncoder: PasswordEncoder
+
+    @Autowired
+    private lateinit var jwtService: JwtService
+
+    private fun createRole(name: String): RoleModel = roleRepository.save(RoleModel(name, null))
+
+    private fun createUser(
+        email: String,
+        firstName: String,
+        lastName: String,
+        role: RoleModel,
+    ): UserModel {
+        val user =
+            UserModel(
+                email = email,
+                passwordHash = passwordEncoder.encode("Test-Password1!"),
+                firstName = firstName,
+                lastName = lastName,
+                role = role,
+            )
+        user.isEnabled = true
+        return userRepository.save(user)
+    }
+
+    private fun createSkill(name: String): SkillModel = skillRepository.save(SkillModel(name))
+
+    private fun createProject(owner: UserModel): ProjectModel =
+        projectRepository.save(
+            ProjectModel(
+                name = "Test Project",
+                description = "Test Description",
+                status = ProjectStatus.PLANNED,
+                startDate = LocalDate.of(2026, 3, 1),
+                endDate = LocalDate.of(2026, 9, 1),
+                maxMembers = 5,
+                owner = owner,
+            ),
+        )
+
+    @Test
+    fun `should return matching candidates sorted by score`() {
+        // given
+        val pmRole = createRole("PROJECTMANAGER")
+        val empRole = createRole("EMPLOYER")
+        val pm = createUser("pm@firma.de", "PM", "User", pmRole)
+        val token = jwtService.generateAccessToken(pm)
+
+        val kotlin = createSkill("kotlin")
+        val spring = createSkill("spring boot")
+        val docker = createSkill("docker")
+
+        val project = createProject(pm)
+        projectSkillRepository.save(
+            ProjectSkillModel(
+                project = project,
+                skill = kotlin,
+                level = 3,
+                priority = SkillPriority.MUST_HAVE,
+            ),
+        )
+        projectSkillRepository.save(ProjectSkillModel(project = project, skill = spring, level = 4, priority = SkillPriority.MUST_HAVE))
+        projectSkillRepository.save(ProjectSkillModel(project = project, skill = docker, level = 2, priority = SkillPriority.NICE_TO_HAVE))
+
+        // user1: perfekter Match
+        val user1 = createUser("user1@firma.de", "User", "One", empRole)
+        userSkillRepository.save(UserSkillModel(user = user1, skill = kotlin, level = 4))
+        userSkillRepository.save(UserSkillModel(user = user1, skill = spring, level = 5))
+        userSkillRepository.save(UserSkillModel(user = user1, skill = docker, level = 3))
+
+        // user2: nur kotlin
+        val user2 = createUser("user2@firma.de", "User", "Two", empRole)
+        userSkillRepository.save(UserSkillModel(user = user2, skill = kotlin, level = 3))
+
+        mockMvc
+            .get("/api/matching/projects/${project.id}/candidates") {
+                header("Authorization", "Bearer $token")
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(2) }
+                jsonPath("$[0].userId") { value(user1.id) }
+                jsonPath("$[0].score") { isNumber() }
+                jsonPath("$[0].breakdown.mustHaveCoverage") { value(1.0) }
+                jsonPath("$[0].matchedSkills.length()") { value(3) }
+                jsonPath("$[0].missingSkills.length()") { value(0) }
+                jsonPath("$[1].userId") { value(user2.id) }
+                jsonPath("$[1].breakdown.mustHaveCoverage") { value(0.5) }
+            }
+    }
+
+    @Test
+    fun `should return 404 when project not found`() {
+        // given
+        val pmRole = createRole("PROJECTMANAGER")
+        val pm = createUser("pm@firma.de", "PM", "User", pmRole)
+        val token = jwtService.generateAccessToken(pm)
+
+        // when & then
+        mockMvc
+            .get("/api/matching/projects/nonexistent-id/candidates") {
+                header("Authorization", "Bearer $token")
+            }.andExpect {
+                status { isNotFound() }
+                jsonPath("$.errorCode") { value("PROJECT_NOT_FOUND") }
+            }
+    }
+
+    @Test
+    fun `should return 403 when employer tries to find candidates`() {
+        // given
+        val empRole = createRole("EMPLOYER")
+        val emp = createUser("emp@firma.de", "Emp", "User", empRole)
+        val token = jwtService.generateAccessToken(emp)
+
+        // when & then
+        mockMvc
+            .get("/api/matching/projects/some-id/candidates") {
+                header("Authorization", "Bearer $token")
+            }.andExpect {
+                status { isForbidden() }
+            }
+    }
+
+    @Test
+    fun `should return 401 when not authenticated`() {
+        // when & then
+        mockMvc
+            .get("/api/matching/projects/some-id/candidates")
+            .andExpect {
+                status { isUnauthorized() }
+            }
+    }
+
+    @Test
+    fun `should filter by minScore`() {
+        // given
+        val pmRole = createRole("PROJECTMANAGER")
+        val empRole = createRole("EMPLOYER")
+        val pm = createUser("pm@firma.de", "PM", "User", pmRole)
+        val token = jwtService.generateAccessToken(pm)
+
+        val kotlin = createSkill("kotlin")
+        val spring = createSkill("spring boot")
+
+        val project = createProject(pm)
+        projectSkillRepository.save(ProjectSkillModel(project = project, skill = kotlin, level = 3, priority = SkillPriority.MUST_HAVE))
+        projectSkillRepository.save(ProjectSkillModel(project = project, skill = spring, level = 4, priority = SkillPriority.MUST_HAVE))
+
+        // user: hat nur kotlin → niedrigerer Score
+        val user = createUser("user@firma.de", "User", "One", empRole)
+        userSkillRepository.save(UserSkillModel(user = user, skill = kotlin, level = 3))
+
+        // when & then — mit hohem minScore sollte der User rausfallen
+        mockMvc
+            .get("/api/matching/projects/${project.id}/candidates?minScore=0.9") {
+                header("Authorization", "Bearer $token")
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(0) }
+            }
+    }
+
+    @Test
+    fun `should return matching projects for authenticated user`() {
+        // given
+        val pmRole = createRole("PROJECTMANAGER")
+        val empRole = createRole("EMPLOYER")
+        val pm = createUser("pm@firma.de", "PM", "User", pmRole)
+
+        val kotlin = createSkill("kotlin")
+        val spring = createSkill("spring boot")
+
+        val project = createProject(pm)
+        projectSkillRepository.save(ProjectSkillModel(project = project, skill = kotlin, level = 3, priority = SkillPriority.MUST_HAVE))
+        projectSkillRepository.save(ProjectSkillModel(project = project, skill = spring, level = 3, priority = SkillPriority.NICE_TO_HAVE))
+
+        val user = createUser("user@firma.de", "User", "One", empRole)
+        userSkillRepository.save(UserSkillModel(user = user, skill = kotlin, level = 4))
+        userSkillRepository.save(UserSkillModel(user = user, skill = spring, level = 5))
+        val userToken = jwtService.generateAccessToken(user)
+
+        // when & then
+        mockMvc
+            .get("/api/matching/me/projects") {
+                header("Authorization", "Bearer $userToken")
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(1) }
+                jsonPath("$[0].projectId") { value(project.id) }
+                jsonPath("$[0].score") { isNumber() }
+                jsonPath("$[0].projectName") { value("Test Project") }
+                jsonPath("$[0].breakdown.mustHaveCoverage") { value(1.0) }
+            }
+    }
+
+    @Test
+    fun `should return empty list when user has no skills`() {
+        // given
+        val pmRole = createRole("PROJECTMANAGER")
+        val empRole = createRole("EMPLOYER")
+        val pm = createUser("pm@firma.de", "PM", "User", pmRole)
+
+        val kotlin = createSkill("kotlin")
+        val project = createProject(pm)
+        projectSkillRepository.save(ProjectSkillModel(project = project, skill = kotlin, level = 3, priority = SkillPriority.MUST_HAVE))
+
+        val user = createUser("user@firma.de", "User", "One", empRole)
+        val userToken = jwtService.generateAccessToken(user)
+
+        // when & then
+        mockMvc
+            .get("/api/matching/me/projects") {
+                header("Authorization", "Bearer $userToken")
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.length()") { value(0) }
+            }
+    }
+
+    @Test
+    fun `should return 401 when finding projects not authenticated`() {
+        // when & then
+        mockMvc
+            .get("/api/matching/me/projects")
+            .andExpect {
+                status { isUnauthorized() }
+            }
+    }
+}
