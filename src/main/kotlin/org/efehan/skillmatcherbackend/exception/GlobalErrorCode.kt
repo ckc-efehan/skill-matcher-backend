@@ -29,6 +29,20 @@ enum class GlobalErrorCode(
     SKILL_NOT_FOUND("Skill could not be found."),
     USER_SKILL_NOT_FOUND("User skill could not be found."),
 
+    // Matching
+    PROJECT_SKILL_NOT_FOUND("Project skill could not be found."),
+    PROJECT_SKILL_DUPLICATE("This skill is already assigned to the project."),
+
+    // Project Members
+    PROJECT_MEMBER_NOT_FOUND("Project member could not be found."),
+    PROJECT_MEMBER_DUPLICATE("User is already a member of this project."),
+    PROJECT_FULL("Project has reached its maximum number of members."),
+
+    // User Availability
+    USER_AVAILABILITY_NOT_FOUND("User availability entry could not be found."),
+    USER_AVAILABILITY_ACCESS_DENIED("Not allowed to modify this availability entry."),
+    USER_AVAILABILITY_OVERLAP("Availability period overlaps with an existing entry."),
+
     // Invitation
     INVALID_INVITATION_TOKEN("Invitation token is invalid."),
     INVITATION_ALREADY_ACCEPTED("Invitation has already been accepted."),

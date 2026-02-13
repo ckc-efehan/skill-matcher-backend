@@ -9,6 +9,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
+import java.time.Instant
 import java.time.LocalDate
 
 @Entity
@@ -22,9 +23,9 @@ class ProjectModel(
     @Column(name = "status", nullable = false)
     var status: ProjectStatus,
     @Column(name = "start_date", nullable = false)
-    var startDate: LocalDate,
+    var startDate: Instant,
     @Column(name = "end_date", nullable = false)
-    var endDate: LocalDate,
+    var endDate: Instant,
     @Column(name = "max_members", nullable = false)
     var maxMembers: Int,
     @ManyToOne(optional = false)
