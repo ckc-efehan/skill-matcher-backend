@@ -70,8 +70,7 @@ class MatchingService(
             .map { (_, skills) ->
                 val user = skills.first().user
                 computeUserMatch(user, skills, projectSkills, project)
-            }
-            .filter { it.score >= minScore }
+            }.filter { it.score >= minScore }
             .sortedByDescending { it.score }
             .take(limit)
     }
@@ -92,10 +91,13 @@ class MatchingService(
 
         // projekte ausschließen, bei denen der user schon aktives mitglied ist
         val memberProjects =
-            projects.filter { project ->
-                projectMemberRepo.findByProjectAndUser(project, user)
-                    ?.let { it.status == ProjectMemberStatus.ACTIVE } == true
-            }.map { it.id }.toSet()
+            projects
+                .filter { project ->
+                    projectMemberRepo
+                        .findByProjectAndUser(project, user)
+                        ?.let { it.status == ProjectMemberStatus.ACTIVE } == true
+                }.map { it.id }
+                .toSet()
 
         return projects
             .asSequence()
@@ -104,8 +106,7 @@ class MatchingService(
                 val projectSkills = projectSkillRepo.findByProject(project)
                 if (projectSkills.isEmpty()) return@mapNotNull null
                 computeProjectMatch(user, userSkills, project, projectSkills)
-            }
-            .filter { it.score >= minScore }
+            }.filter { it.score >= minScore }
             .sortedByDescending { it.score }
             .take(limit)
             .toList()
@@ -134,7 +135,7 @@ class MatchingService(
         user: UserModel,
         userSkills: List<UserSkillModel>,
         project: ProjectModel,
-        projectSkills: List<ProjectSkillModel>
+        projectSkills: List<ProjectSkillModel>,
     ): ProjectMatchDto {
         val result = computeScore(userSkills, projectSkills, user, project)
 
@@ -184,7 +185,7 @@ class MatchingService(
                         skillName = ps.skill.name,
                         userLevel = us.level,
                         requiredLevel = ps.level,
-                        priority = ps.priority.name
+                        priority = ps.priority.name,
                     ),
                 )
             } else if (us != null) {
@@ -233,7 +234,7 @@ class MatchingService(
                         skillId = ps.skill.id,
                         skillName = ps.skill.name,
                         requiredLevel = ps.level,
-                        priority = ps.priority.name
+                        priority = ps.priority.name,
                     ),
                 )
             }
@@ -262,9 +263,9 @@ class MatchingService(
 
         val rawScore =
             WEIGHT_MUST_HAVE * mustHaveCoverage +
-                    WEIGHT_LEVEL_FIT * levelFitScore +
-                    WEIGHT_NICE_TO_HAVE * niceToHaveCoverage +
-                    WEIGHT_AVAILIBILITY * availabilityScore
+                WEIGHT_LEVEL_FIT * levelFitScore +
+                WEIGHT_NICE_TO_HAVE * niceToHaveCoverage +
+                WEIGHT_AVAILIBILITY * availabilityScore
 
         val score = roundToTwoDecimals(rawScore)
 

@@ -29,7 +29,7 @@ class ProjectSkillModel(
     var level: Int,
     @Enumerated(EnumType.STRING)
     @Column(name = "priority", nullable = false)
-    var priority: SkillPriority = SkillPriority.MUST_HAVE
+    var priority: SkillPriority = SkillPriority.MUST_HAVE,
 ) : AuditingBaseEntity()
 
 @Repository

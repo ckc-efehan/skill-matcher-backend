@@ -25,7 +25,7 @@ class UserAvailabilityModel(
     var availableFrom: LocalDate,
     @Column(name = "available_to", nullable = false)
     var availableTo: LocalDate,
-): AuditingBaseEntity()
+) : AuditingBaseEntity()
 
 @Repository
 interface UserAvailibilityRepository : JpaRepository<UserAvailabilityModel, String> {

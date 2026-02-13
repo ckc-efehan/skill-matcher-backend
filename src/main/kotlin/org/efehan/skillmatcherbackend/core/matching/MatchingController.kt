@@ -26,7 +26,7 @@ class MatchingController(
 ) {
     @Operation(
         summary = "Find matching candidates for a project",
-        description = "Returns a ranked list of users that the projects required skills."
+        description = "Returns a ranked list of users that the projects required skills.",
     )
     @ApiResponses(
         value = [
@@ -107,8 +107,7 @@ class MatchingController(
         minScore: Double,
         @RequestParam(defaultValue = "20")
         limit: Int,
-    ): ResponseEntity<List<UserMatchDto>> =
-        ResponseEntity.ok(matchingService.findCandidatesForProject(projectId, minScore, limit))
+    ): ResponseEntity<List<UserMatchDto>> = ResponseEntity.ok(matchingService.findCandidatesForProject(projectId, minScore, limit))
 
     @Operation(
         summary = "Find matching projects for me",
@@ -134,7 +133,7 @@ class MatchingController(
                                     {
                                         "errorCode": "USER_MUST_LOGIN",
                                         "errorMessage": "User must be logged in."
-                                """
+                                """,
                             ),
                         ],
                     ),
@@ -150,6 +149,5 @@ class MatchingController(
         minScore: Double,
         @RequestParam(defaultValue = "20")
         limit: Int,
-    ): ResponseEntity<List<ProjectMatchDto>> =
-        ResponseEntity.ok(matchingService.findProjectsForUser(securityUser.user, minScore, limit))
+    ): ResponseEntity<List<ProjectMatchDto>> = ResponseEntity.ok(matchingService.findProjectsForUser(securityUser.user, minScore, limit))
 }
