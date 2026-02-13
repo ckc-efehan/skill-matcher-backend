@@ -19,8 +19,9 @@ import org.efehan.skillmatcherbackend.persistence.RoleModel
 import org.efehan.skillmatcherbackend.persistence.SkillModel
 import org.efehan.skillmatcherbackend.persistence.SkillPriority
 import org.efehan.skillmatcherbackend.persistence.UserAvailabilityModel
-import org.efehan.skillmatcherbackend.persistence.UserAvailibilityRepository
+import org.efehan.skillmatcherbackend.persistence.UserAvailabilityRepository
 import org.efehan.skillmatcherbackend.persistence.UserModel
+import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.persistence.UserSkillModel
 import org.efehan.skillmatcherbackend.persistence.UserSkillRepository
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
@@ -45,10 +46,13 @@ class MatchingServiceTest {
     private lateinit var userSkillRepository: UserSkillRepository
 
     @MockK
+    private lateinit var userRepository: UserRepository
+
+    @MockK
     private lateinit var projectMemberRepository: ProjectMemberRepository
 
     @MockK
-    private lateinit var availabilityRepository: UserAvailibilityRepository
+    private lateinit var availabilityRepository: UserAvailabilityRepository
 
     private lateinit var matchingService: MatchingService
 
@@ -105,7 +109,7 @@ class MatchingServiceTest {
                 projectRepository,
                 projectSkillRepository,
                 userSkillRepository,
-                projectSkillRepository,
+                userRepository,
                 projectMemberRepository,
                 availabilityRepository,
             )

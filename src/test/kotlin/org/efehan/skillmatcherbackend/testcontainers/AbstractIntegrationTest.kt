@@ -9,7 +9,7 @@ import org.efehan.skillmatcherbackend.persistence.ProjectSkillRepository
 import org.efehan.skillmatcherbackend.persistence.RefreshTokenRepository
 import org.efehan.skillmatcherbackend.persistence.RoleRepository
 import org.efehan.skillmatcherbackend.persistence.SkillRepository
-import org.efehan.skillmatcherbackend.persistence.UserAvailibilityRepository
+import org.efehan.skillmatcherbackend.persistence.UserAvailabilityRepository
 import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.persistence.UserSkillRepository
 import org.junit.jupiter.api.BeforeEach
@@ -65,14 +65,14 @@ abstract class AbstractIntegrationTest {
     protected lateinit var projectMemberRepository: ProjectMemberRepository
 
     @Autowired
-    protected lateinit var userAvailibilityRepository: UserAvailibilityRepository
+    protected lateinit var userAvailabilityRepository: UserAvailabilityRepository
 
     @BeforeEach
     fun cleanUp() {
         projectMemberRepository.deleteAll()
         projectSkillRepository.deleteAll()
         projectRepository.deleteAll()
-        userAvailibilityRepository.deleteAll()
+        userAvailabilityRepository.deleteAll()
         userSkillRepository.deleteAll()
         skillRepository.deleteAll()
         passwordResetTokenRepository.deleteAll()

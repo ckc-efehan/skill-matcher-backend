@@ -8,8 +8,9 @@ import org.efehan.skillmatcherbackend.persistence.ProjectRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectSkillModel
 import org.efehan.skillmatcherbackend.persistence.ProjectSkillRepository
 import org.efehan.skillmatcherbackend.persistence.SkillPriority
-import org.efehan.skillmatcherbackend.persistence.UserAvailibilityRepository
+import org.efehan.skillmatcherbackend.persistence.UserAvailabilityRepository
 import org.efehan.skillmatcherbackend.persistence.UserModel
+import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.persistence.UserSkillModel
 import org.efehan.skillmatcherbackend.persistence.UserSkillRepository
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
@@ -26,15 +27,15 @@ class MatchingService(
     private val projectRepo: ProjectRepository,
     private val projectSkillRepo: ProjectSkillRepository,
     private val userSkillRepo: UserSkillRepository,
-    private val userRepo: ProjectSkillRepository,
+    private val userRepo: UserRepository,
     private val projectMemberRepo: ProjectMemberRepository,
-    private val availibilityRepo: UserAvailibilityRepository,
+    private val availabilityRepo: UserAvailabilityRepository,
 ) {
     companion object {
         const val WEIGHT_MUST_HAVE = 0.40
         const val WEIGHT_LEVEL_FIT = 0.25
         const val WEIGHT_NICE_TO_HAVE = 0.15
-        const val WEIGHT_AVAILIBILITY = 0.20
+        const val WEIGHT_AVAILABILITY = 0.20
         const val LEVEL_OVERFIT_CAP = 1.2
     }
 
@@ -265,7 +266,7 @@ class MatchingService(
             WEIGHT_MUST_HAVE * mustHaveCoverage +
                 WEIGHT_LEVEL_FIT * levelFitScore +
                 WEIGHT_NICE_TO_HAVE * niceToHaveCoverage +
-                WEIGHT_AVAILIBILITY * availabilityScore
+                WEIGHT_AVAILABILITY * availabilityScore
 
         val score = roundToTwoDecimals(rawScore)
 
@@ -287,7 +288,7 @@ class MatchingService(
         user: UserModel,
         project: ProjectModel,
     ): Double {
-        val availabilities = availibilityRepo.findByUser(user)
+        val availabilities = availabilityRepo.findByUser(user)
 
         if (availabilities.isEmpty()) return 1.0
 

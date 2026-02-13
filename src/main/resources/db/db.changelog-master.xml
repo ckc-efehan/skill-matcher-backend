@@ -23,4 +23,5 @@ http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
     <include file="db/changelog/v0.8_add_projects.xml"/>
     <include file="db/changelog/v0.9_remove_username_from_users.xml"/>
     <include file="db/changelog/v0.10_add_user_availability.xml"/>
+    <include file="db/changelog/v0.11_fix_availability_typo.xml"/>
 </databaseChangeLog>

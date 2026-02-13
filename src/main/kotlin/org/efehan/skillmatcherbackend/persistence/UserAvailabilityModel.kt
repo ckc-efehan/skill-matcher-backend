@@ -12,9 +12,9 @@ import java.time.LocalDate
 
 @Entity
 @Table(
-    name = "user_availibility",
+    name = "user_availability",
     indexes = [
-        Index(name = "idx_user_availibility_user_id", columnList = "user_id"),
+        Index(name = "idx_user_availability_user_id", columnList = "user_id"),
     ],
 )
 class UserAvailabilityModel(
@@ -28,6 +28,6 @@ class UserAvailabilityModel(
 ) : AuditingBaseEntity()
 
 @Repository
-interface UserAvailibilityRepository : JpaRepository<UserAvailabilityModel, String> {
+interface UserAvailabilityRepository : JpaRepository<UserAvailabilityModel, String> {
     fun findByUser(user: UserModel): List<UserAvailabilityModel>
 }
