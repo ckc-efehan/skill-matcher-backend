@@ -42,10 +42,11 @@ interface ProjectRepository : JpaRepository<ProjectModel, String> {
         SELECT p
         FROM ProjectModel p
         WHERE p.status IN :statuses
-          AND p.id NOT IN (
-              SELECT pm.project.id
+          AND NOT EXISTS (
+              SELECT pm.id
               FROM ProjectMemberModel pm
-              WHERE pm.user = :user
+              WHERE pm.project = p
+                AND pm.user = :user
                 AND pm.status = :activeStatus
           )
         """,

@@ -45,10 +45,11 @@ interface UserSkillRepository : JpaRepository<UserSkillModel, String> {
         FROM UserSkillModel us
         WHERE us.skill IN :skills
           AND us.user.isEnabled = true
-          AND us.user.id NOT IN (
-              SELECT pm.user.id
+          AND NOT EXISTS (
+              SELECT pm.id
               FROM ProjectMemberModel pm
               WHERE pm.project = :project
+                AND pm.user = us.user
                 AND pm.status = :activeStatus
           )
         """,

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-5.0.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+
+    <changeSet id="opt-matching-create-project-members-user-status-project" author="efehan">
+        <createIndex tableName="project_members" indexName="idx_project_members_user_status_project">
+            <column name="user_id"/>
+            <column name="status"/>
+            <column name="project_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="opt-matching-create-project-members-project-status-user" author="efehan">
+        <createIndex tableName="project_members" indexName="idx_project_members_project_status_user">
+            <column name="project_id"/>
+            <column name="status"/>
+            <column name="user_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="opt-matching-drop-project-members-user-status" author="efehan">
+        <preConditions onFail="MARK_RAN">
+            <indexExists tableName="project_members" indexName="idx_project_members_user_status"/>
+        </preConditions>
+        <dropIndex tableName="project_members" indexName="idx_project_members_user_status"/>
+    </changeSet>
+
+    <changeSet id="opt-matching-drop-project-members-project-status" author="efehan">
+        <preConditions onFail="MARK_RAN">
+            <indexExists tableName="project_members" indexName="idx_project_members_project_status"/>
+        </preConditions>
+        <dropIndex tableName="project_members" indexName="idx_project_members_project_status"/>
+    </changeSet>
+
+    <changeSet id="opt-matching-create-user-skills-skill-user" author="efehan">
+        <createIndex tableName="user_skills" indexName="idx_user_skills_skill_user">
+            <column name="skill_id"/>
+            <column name="user_id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>
