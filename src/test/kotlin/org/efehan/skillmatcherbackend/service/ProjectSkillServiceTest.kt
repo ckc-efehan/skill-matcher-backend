@@ -15,6 +15,7 @@ import org.efehan.skillmatcherbackend.persistence.ProjectSkillRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectStatus
 import org.efehan.skillmatcherbackend.persistence.RoleModel
 import org.efehan.skillmatcherbackend.persistence.SkillModel
+import org.efehan.skillmatcherbackend.persistence.SkillPriority
 import org.efehan.skillmatcherbackend.persistence.SkillRepository
 import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
@@ -104,6 +105,7 @@ class ProjectSkillServiceTest {
         assertThat(created).isTrue()
         assertThat(dto.name).isEqualTo("kotlin")
         assertThat(dto.level).isEqualTo(3)
+        assertThat(dto.priority).isEqualTo("MUST_HAVE")
         verify(exactly = 1) { skillRepo.save(any()) }
         verify(exactly = 1) { projectSkillRepo.save(any()) }
     }
@@ -124,25 +126,34 @@ class ProjectSkillServiceTest {
         assertThat(created).isTrue()
         assertThat(dto.name).isEqualTo("java")
         assertThat(dto.level).isEqualTo(4)
+        assertThat(dto.priority).isEqualTo("MUST_HAVE")
         verify(exactly = 0) { skillRepo.save(any()) }
     }
 
     @Test
-    fun `addOrUpdateSkill updates level when project already has the skill`() {
+    fun `addOrUpdateSkill updates level and priority when project already has the skill`() {
         // given
         val skill = SkillModel(name = "kotlin")
-        val existingProjectSkill = ProjectSkillModel(project = project, skill = skill, level = 2)
+        val existingProjectSkill =
+            ProjectSkillModel(
+                project = project,
+                skill = skill,
+                level = 2,
+                priority = SkillPriority.MUST_HAVE,
+            )
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { skillRepo.findByNameIgnoreCase("kotlin") } returns skill
         every { projectSkillRepo.findByProjectAndSkillId(project, skill.id) } returns existingProjectSkill
         every { projectSkillRepo.save(any()) } returnsArgument 0
 
         // when
-        val (dto, created) = projectSkillService.addOrUpdateSkill(owner, project.id, "Kotlin", 5)
+        val (dto, created) = projectSkillService.addOrUpdateSkill(owner, project.id, "Kotlin", 5, "NICE_TO_HAVE")
 
         // then
         assertThat(created).isFalse()
         assertThat(dto.level).isEqualTo(5)
+        assertThat(dto.priority).isEqualTo("NICE_TO_HAVE")
+        assertThat(existingProjectSkill.priority).isEqualTo(SkillPriority.NICE_TO_HAVE)
         verify(exactly = 0) { skillRepo.save(any()) }
     }
 
@@ -225,7 +236,7 @@ class ProjectSkillServiceTest {
         val projectSkills =
             listOf(
                 ProjectSkillModel(project = project, skill = skill1, level = 4),
-                ProjectSkillModel(project = project, skill = skill2, level = 3),
+                ProjectSkillModel(project = project, skill = skill2, level = 3, priority = SkillPriority.NICE_TO_HAVE),
             )
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { projectSkillRepo.findByProject(project) } returns projectSkills
@@ -237,8 +248,10 @@ class ProjectSkillServiceTest {
         assertThat(result).hasSize(2)
         assertThat(result[0].name).isEqualTo("kotlin")
         assertThat(result[0].level).isEqualTo(4)
+        assertThat(result[0].priority).isEqualTo("MUST_HAVE")
         assertThat(result[1].name).isEqualTo("java")
         assertThat(result[1].level).isEqualTo(3)
+        assertThat(result[1].priority).isEqualTo("NICE_TO_HAVE")
     }
 
     @Test

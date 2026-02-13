@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Pattern
 
 data class AddProjectSkillRequest(
     @field:NotBlank
@@ -13,6 +14,15 @@ data class AddProjectSkillRequest(
     @field:Max(5)
     @Schema(example = "4")
     val level: Int,
+    @field:Pattern(
+        regexp = "(?i)MUST_HAVE|NICE_TO_HAVE",
+        message = "Priority must be MUST_HAVE or NICE_TO_HAVE",
+    )
+    @Schema(
+        example = "MUST_HAVE",
+        allowableValues = ["MUST_HAVE", "NICE_TO_HAVE"],
+    )
+    val priority: String = "MUST_HAVE",
 )
 
 data class ProjectSkillDto(
@@ -22,4 +32,6 @@ data class ProjectSkillDto(
     val name: String,
     @Schema(example = "4")
     val level: Int,
+    @Schema(example = "MUST_HAVE")
+    val priority: String,
 )

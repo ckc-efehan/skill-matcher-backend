@@ -6,6 +6,7 @@ import org.efehan.skillmatcherbackend.persistence.ProjectRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectSkillModel
 import org.efehan.skillmatcherbackend.persistence.ProjectSkillRepository
 import org.efehan.skillmatcherbackend.persistence.SkillModel
+import org.efehan.skillmatcherbackend.persistence.SkillPriority
 import org.efehan.skillmatcherbackend.persistence.SkillRepository
 import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
@@ -26,8 +27,10 @@ class ProjectSkillService(
         projectId: String,
         name: String,
         level: Int,
+        priorityName: String = SkillPriority.MUST_HAVE.name,
     ): Pair<ProjectSkillDto, Boolean> {
         require(level in 1..5) { "Level must be between 1 and 5" }
+        val priority = parsePriority(priorityName)
 
         val project = findProjectAndCheckOwnership(projectId, user)
         val skill = getOrCreateSkill(name)
@@ -37,9 +40,17 @@ class ProjectSkillService(
         val projectSkill =
             if (existing != null) {
                 existing.level = level
+                existing.priority = priority
                 projectSkillRepo.save(existing)
             } else {
-                projectSkillRepo.save(ProjectSkillModel(project = project, skill = skill, level = level))
+                projectSkillRepo.save(
+                    ProjectSkillModel(
+                        project = project,
+                        skill = skill,
+                        level = level,
+                        priority = priority,
+                    ),
+                )
             }
 
         return projectSkill.toDto() to created
@@ -117,10 +128,16 @@ class ProjectSkillService(
             ?: skillRepo.save(SkillModel(name = normalized))
     }
 
+    private fun parsePriority(priorityName: String): SkillPriority =
+        SkillPriority.entries.firstOrNull {
+            it.name.equals(priorityName.trim(), ignoreCase = true)
+        } ?: throw IllegalArgumentException("Priority must be MUST_HAVE or NICE_TO_HAVE")
+
     private fun ProjectSkillModel.toDto() =
         ProjectSkillDto(
             id = id,
             name = skill.name,
             level = level,
+            priority = priority.name,
         )
 }
