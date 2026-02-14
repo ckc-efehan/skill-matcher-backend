@@ -97,6 +97,29 @@ class UserAvailabilityControllerIT : AbstractIntegrationTest() {
     }
 
     @Test
+    fun `should return 400 when availability date range is invalid on create`() {
+        // given
+        val role = createRole("EMPLOYER")
+        val user = createUser("user@firma.de", role)
+        val token = jwtService.generateAccessToken(user)
+
+        // when & then
+        mockMvc
+            .post("/api/me/availability") {
+                header("Authorization", "Bearer $token")
+                withBodyRequest(
+                    mapOf(
+                        "availableFrom" to "2026-06-01",
+                        "availableTo" to "2026-03-01",
+                    ),
+                )
+            }.andExpect {
+                status { isBadRequest() }
+                jsonPath("$.errorCode") { value("VALIDATION_ERROR") }
+            }
+    }
+
+    @Test
     fun `should return all availability entries sorted`() {
         // given
         val role = createRole("EMPLOYER")
@@ -230,6 +253,37 @@ class UserAvailabilityControllerIT : AbstractIntegrationTest() {
             }.andExpect {
                 status { isForbidden() }
                 jsonPath("$.errorCode") { value("USER_AVAILABILITY_ACCESS_DENIED") }
+            }
+    }
+
+    @Test
+    fun `should return 400 when availability date range is invalid on update`() {
+        // given
+        val role = createRole("EMPLOYER")
+        val user = createUser("user@firma.de", role)
+        val token = jwtService.generateAccessToken(user)
+        val entry =
+            userAvailabilityRepository.save(
+                UserAvailabilityModel(
+                    user = user,
+                    availableFrom = LocalDate.of(2026, 3, 1),
+                    availableTo = LocalDate.of(2026, 6, 1),
+                ),
+            )
+
+        // when & then
+        mockMvc
+            .put("/api/me/availability/${entry.id}") {
+                header("Authorization", "Bearer $token")
+                withBodyRequest(
+                    mapOf(
+                        "availableFrom" to "2026-07-01",
+                        "availableTo" to "2026-04-01",
+                    ),
+                )
+            }.andExpect {
+                status { isBadRequest() }
+                jsonPath("$.errorCode") { value("VALIDATION_ERROR") }
             }
     }
 
