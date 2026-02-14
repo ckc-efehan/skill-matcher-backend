@@ -4,6 +4,8 @@ import org.assertj.core.api.Assertions.assertThat
 import org.efehan.skillmatcherbackend.core.auth.JwtService
 import org.efehan.skillmatcherbackend.core.project.CreateProjectRequest
 import org.efehan.skillmatcherbackend.core.project.UpdateProjectRequest
+import org.efehan.skillmatcherbackend.persistence.ProjectMemberModel
+import org.efehan.skillmatcherbackend.persistence.ProjectMemberStatus
 import org.efehan.skillmatcherbackend.persistence.ProjectModel
 import org.efehan.skillmatcherbackend.persistence.ProjectStatus
 import org.efehan.skillmatcherbackend.persistence.RoleModel
@@ -17,6 +19,7 @@ import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
+import java.time.Instant
 import java.time.LocalDate
 
 @DisplayName("ProjectController Integration Tests")
@@ -455,6 +458,33 @@ class ProjectControllerIT : AbstractIntegrationTest() {
             }
 
         assertThat(projectRepository.findById(project.id)).isEmpty
+    }
+
+    @Test
+    fun `should delete project with active members and return 204`() {
+        // given
+        val (owner, token) = createProjectManagerAndGetToken()
+        val project = createProject(owner)
+        val (member, _) = createOtherProjectManagerAndGetToken()
+        projectMemberRepository.save(
+            ProjectMemberModel(
+                project = project,
+                user = member,
+                status = ProjectMemberStatus.ACTIVE,
+                joinedDate = Instant.now(),
+            ),
+        )
+
+        // when & then
+        mockMvc
+            .delete("/api/projects/${project.id}") {
+                header("Authorization", "Bearer $token")
+            }.andExpect {
+                status { isNoContent() }
+            }
+
+        assertThat(projectRepository.findById(project.id)).isEmpty
+        assertThat(projectMemberRepository.findAll()).isEmpty()
     }
 
     @Test

@@ -10,6 +10,9 @@ import org.efehan.skillmatcherbackend.core.project.CreateProjectRequest
 import org.efehan.skillmatcherbackend.core.project.ProjectService
 import org.efehan.skillmatcherbackend.core.project.UpdateProjectRequest
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
+import org.efehan.skillmatcherbackend.persistence.ProjectMemberModel
+import org.efehan.skillmatcherbackend.persistence.ProjectMemberRepository
+import org.efehan.skillmatcherbackend.persistence.ProjectMemberStatus
 import org.efehan.skillmatcherbackend.persistence.ProjectModel
 import org.efehan.skillmatcherbackend.persistence.ProjectRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectSkillModel
@@ -24,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import java.time.Instant
 import java.time.LocalDate
 import java.util.Optional
 
@@ -35,6 +39,9 @@ class ProjectServiceTest {
 
     @MockK
     private lateinit var projectSkillRepo: ProjectSkillRepository
+
+    @MockK
+    private lateinit var projectMemberRepo: ProjectMemberRepository
 
     private lateinit var projectService: ProjectService
 
@@ -60,7 +67,7 @@ class ProjectServiceTest {
 
     @BeforeEach
     fun setUp() {
-        projectService = ProjectService(projectRepo, projectSkillRepo)
+        projectService = ProjectService(projectRepo, projectSkillRepo, projectMemberRepo)
     }
 
     @Test
@@ -233,9 +240,18 @@ class ProjectServiceTest {
     fun `deleteProject deletes project and its skills when owner`() {
         // given
         val project = buildProject(owner)
+        val projectMember =
+            ProjectMemberModel(
+                project = project,
+                user = owner,
+                status = ProjectMemberStatus.ACTIVE,
+                joinedDate = Instant.now(),
+            )
         val skill = SkillModel(name = "kotlin")
         val projectSkill = ProjectSkillModel(project = project, skill = skill, level = 3)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
+        every { projectMemberRepo.findByProject(project) } returns listOf(projectMember)
+        every { projectMemberRepo.deleteAll(listOf(projectMember)) } returns Unit
         every { projectSkillRepo.findByProject(project) } returns listOf(projectSkill)
         every { projectSkillRepo.deleteAll(listOf(projectSkill)) } returns Unit
         every { projectRepo.delete(project) } returns Unit
@@ -244,6 +260,7 @@ class ProjectServiceTest {
         projectService.deleteProject(owner, project.id)
 
         // then
+        verify(exactly = 1) { projectMemberRepo.deleteAll(listOf(projectMember)) }
         verify(exactly = 1) { projectSkillRepo.deleteAll(listOf(projectSkill)) }
         verify(exactly = 1) { projectRepo.delete(project) }
     }
@@ -253,6 +270,8 @@ class ProjectServiceTest {
         // given
         val project = buildProject(owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
+        every { projectMemberRepo.findByProject(project) } returns emptyList()
+        every { projectMemberRepo.deleteAll(emptyList()) } returns Unit
         every { projectSkillRepo.findByProject(project) } returns emptyList()
         every { projectSkillRepo.deleteAll(emptyList()) } returns Unit
         every { projectRepo.delete(project) } returns Unit
@@ -261,6 +280,7 @@ class ProjectServiceTest {
         projectService.deleteProject(owner, project.id)
 
         // then
+        verify(exactly = 1) { projectMemberRepo.deleteAll(emptyList()) }
         verify(exactly = 1) { projectSkillRepo.deleteAll(emptyList()) }
         verify(exactly = 1) { projectRepo.delete(project) }
     }
