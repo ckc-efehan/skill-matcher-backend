@@ -1,6 +1,7 @@
 package org.efehan.skillmatcherbackend.core.project
 
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
+import org.efehan.skillmatcherbackend.persistence.ProjectMemberRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectModel
 import org.efehan.skillmatcherbackend.persistence.ProjectRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectSkillRepository
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional
 class ProjectService(
     private val projectRepo: ProjectRepository,
     private val projectSkillRepo: ProjectSkillRepository,
+    private val projectMemberRepo: ProjectMemberRepository,
 ) {
     fun createProject(
         owner: UserModel,
@@ -69,6 +71,7 @@ class ProjectService(
         val project = findProjectOrThrow(projectId)
         checkOwnership(project, user)
 
+        projectMemberRepo.deleteAll(projectMemberRepo.findByProject(project))
         projectSkillRepo.deleteAll(projectSkillRepo.findByProject(project))
         projectRepo.delete(project)
     }
