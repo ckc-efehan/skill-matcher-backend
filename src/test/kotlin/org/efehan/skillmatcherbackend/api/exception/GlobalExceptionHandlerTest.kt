@@ -170,6 +170,16 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    fun `handleIllegalArgument should return BAD_REQUEST with VALIDATION_ERROR`() {
+        val exception = IllegalArgumentException("invalid request value")
+
+        val response = handler.handleIllegalArgument(exception, request)
+
+        assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+        assertThat(response.body?.errorCode).isEqualTo(GlobalErrorCode.VALIDATION_ERROR)
+    }
+
+    @Test
     fun `handleGeneral should return INTERNAL_SERVER_ERROR`() {
         val exception = RuntimeException("Something went wrong")
 

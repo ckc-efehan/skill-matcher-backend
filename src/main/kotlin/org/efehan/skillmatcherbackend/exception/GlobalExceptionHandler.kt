@@ -175,6 +175,19 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
         return ResponseEntity(body, HttpStatus.BAD_REQUEST)
     }
 
+    @ExceptionHandler(IllegalArgumentException::class)
+    fun handleIllegalArgument(
+        exception: IllegalArgumentException,
+        request: HttpServletRequest,
+    ): ResponseEntity<GlobalErrorCodeResponse> {
+        logger.error(
+            "IllegalArgumentException [${request.method} ${request.requestURI}]",
+            exception,
+        )
+        val body = GlobalErrorCodeResponse(errorCode = GlobalErrorCode.VALIDATION_ERROR)
+        return ResponseEntity(body, HttpStatus.BAD_REQUEST)
+    }
+
     @ExceptionHandler(Exception::class)
     fun handleGeneral(
         exception: Exception,
