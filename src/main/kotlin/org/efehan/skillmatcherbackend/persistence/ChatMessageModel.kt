@@ -5,6 +5,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import org.efehan.skillmatcherbackend.core.chat.ChatMessageResponse
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
@@ -22,7 +23,16 @@ class ChatMessageModel(
     val sender: UserModel,
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     val content: String,
-) : AuditingBaseEntity()
+) : AuditingBaseEntity() {
+    fun toResponse() =
+        ChatMessageResponse(
+            id = id,
+            conversationId = conversation.id,
+            senderId = sender.id,
+            content = content,
+            createdDate = createdDate!!,
+        )
+}
 
 @Repository
 interface ChatMessageRepository : JpaRepository<ChatMessageModel, String> {
@@ -41,4 +51,16 @@ interface ChatMessageRepository : JpaRepository<ChatMessageModel, String> {
     ): List<ChatMessageModel>
 
     fun findTopByConversationOrderByCreatedDateDesc(conversation: ConversationModel): ChatMessageModel?
+
+    @Query(
+        """
+          SELECT m FROM ChatMessageModel m
+          WHERE m.conversation IN :conversations
+            AND m.createdDate = (
+                SELECT MAX(m2.createdDate) FROM ChatMessageModel m2
+                WHERE m2.conversation = m.conversation
+            )
+          """,
+    )
+    fun findLastMessagesByConversations(conversations: List<ConversationModel>): List<ChatMessageModel>
 }

@@ -19,7 +19,8 @@ class WebSocketConfig(
     }
 
     override fun registerStompEndpoints(registry: StompEndpointRegistry) {
-        registry.addEndpoint("/ws")
+        registry
+            .addEndpoint("/ws")
             .setAllowedOrigins("http://localhost:5173")
     }
 

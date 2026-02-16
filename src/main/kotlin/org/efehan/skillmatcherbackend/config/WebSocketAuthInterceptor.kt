@@ -19,13 +19,18 @@ class WebSocketAuthInterceptor(
     private val jwtService: JwtService,
     private val userDetailsService: CustomUserDetailsService,
 ) : ChannelInterceptor {
-    override fun preSend(message: Message<*>, channel: MessageChannel): Message<*> {
+    override fun preSend(
+        message: Message<*>,
+        channel: MessageChannel,
+    ): Message<*> {
         val accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor::class.java)
 
         if (accessor != null && accessor.command == StompCommand.CONNECT) {
-            val token = accessor.getFirstNativeHeader("Authorization")
-                ?.removePrefix("Bearer ")
-                ?.ifBlank { null }
+            val token =
+                accessor
+                    .getFirstNativeHeader("Authorization")
+                    ?.removePrefix("Bearer ")
+                    ?.ifBlank { null }
 
             if (token != null) {
                 try {
@@ -33,13 +38,13 @@ class WebSocketAuthInterceptor(
                     val userDetails = userDetailsService.loadUserByUsername(email)
 
                     if (userDetails.isEnabled) {
-                        accessor.user = UsernamePasswordAuthenticationToken(
-                            null,
-                            userDetails.authorities
-                        )
+                        accessor.user =
+                            UsernamePasswordAuthenticationToken(
+                                null,
+                                userDetails.authorities,
+                            )
                     }
                 } catch (_: InvalidTokenException) {
-
                 }
             }
         }

@@ -1,0 +1,136 @@
+package org.efehan.skillmatcherbackend.core.chat
+
+import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
+import org.efehan.skillmatcherbackend.persistence.ChatMessageModel
+import org.efehan.skillmatcherbackend.persistence.ChatMessageRepository
+import org.efehan.skillmatcherbackend.persistence.ConversationModel
+import org.efehan.skillmatcherbackend.persistence.ConversationRepository
+import org.efehan.skillmatcherbackend.persistence.UserModel
+import org.efehan.skillmatcherbackend.persistence.UserRepository
+import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
+import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
+import org.springframework.data.domain.PageRequest
+import org.springframework.http.HttpStatus
+import org.springframework.messaging.simp.SimpMessagingTemplate
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
+
+@Service
+@Transactional
+class ChatService(
+    private val conversationRepo: ConversationRepository,
+    private val messageRepo: ChatMessageRepository,
+    private val userRepo: UserRepository,
+    private val messagingTemplate: SimpMessagingTemplate,
+) {
+    fun getConversations(user: UserModel): List<ConversationModel> = conversationRepo.findByUser(user)
+
+    fun getLastMessages(conversations: List<ConversationModel>): Map<String, ChatMessageModel> =
+        messageRepo.findLastMessagesByConversations(conversations).associateBy { it.conversation.id }
+
+    fun getLastMessage(conversation: ConversationModel): ChatMessageModel? =
+        messageRepo.findTopByConversationOrderByCreatedDateDesc(conversation)
+
+    fun getMessages(
+        user: UserModel,
+        conversationId: String,
+        before: Instant,
+        limit: Int,
+    ): List<ChatMessageModel> {
+        val conversation =
+            conversationRepo.findById(conversationId).orElseThrow {
+                EntryNotFoundException(
+                    resource = "Conversation",
+                    field = "id",
+                    value = conversationId,
+                    errorCode = GlobalErrorCode.CONVERSATION_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
+            }
+
+        if (conversation.userOne.id != user.id && conversation.userTwo.id != user.id) {
+            throw AccessDeniedException(
+                resource = "Conversation",
+                errorCode = GlobalErrorCode.CONVERSATION_ACCESS_DENIED,
+                status = HttpStatus.FORBIDDEN,
+            )
+        }
+
+        val messages = messageRepo.findByConversationBefore(conversation, before, PageRequest.of(0, limit))
+
+        return messages
+    }
+
+    fun createConversation(
+        user: UserModel,
+        partnerId: String,
+    ): Pair<ConversationModel, Boolean> {
+        if (user.id == partnerId) {
+            throw IllegalArgumentException("Cannot create a conversation with yourself.")
+        }
+
+        val partner =
+            userRepo.findById(partnerId).orElseThrow {
+                EntryNotFoundException(
+                    resource = "User",
+                    field = "id",
+                    value = partnerId,
+                    errorCode = GlobalErrorCode.USER_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
+            }
+
+        val existing = conversationRepo.findByUsers(user, partner)
+        if (existing != null) {
+            return existing to false
+        }
+
+        val userOne = if (user.id < partner.id) user else partner
+        val userTwo = if (user.id < partner.id) partner else user
+        val conversation = conversationRepo.save(ConversationModel(userOne = userOne, userTwo = userTwo))
+
+        return conversation to true
+    }
+
+    fun sendMessage(
+        user: UserModel,
+        conversationId: String,
+        content: String,
+    ): ChatMessageModel {
+        val conversation =
+            conversationRepo.findById(conversationId).orElseThrow {
+                EntryNotFoundException(
+                    resource = "Conversation",
+                    field = "id",
+                    value = conversationId,
+                    errorCode = GlobalErrorCode.CONVERSATION_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
+            }
+
+        if (conversation.userOne.id != user.id && conversation.userTwo.id != user.id) {
+            throw AccessDeniedException(
+                resource = "Conversation",
+                errorCode = GlobalErrorCode.CONVERSATION_ACCESS_DENIED,
+                status = HttpStatus.FORBIDDEN,
+            )
+        }
+
+        val message =
+            messageRepo.save(
+                ChatMessageModel(
+                    conversation = conversation,
+                    sender = user,
+                    content = content,
+                ),
+            )
+
+        val recipientId = if (conversation.userOne.id == user.id) conversation.userTwo.id else conversation.userOne.id
+        val response = message.toResponse()
+        messagingTemplate.convertAndSendToUser(recipientId, "/queue/messages", response)
+        messagingTemplate.convertAndSendToUser(user.id, "/queue/messages", response)
+
+        return message
+    }
+}
