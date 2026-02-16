@@ -59,6 +59,7 @@ class SecurityConfig(
                 allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 allowedHeaders = listOf("*")
                 maxAge = 3600
+                allowCredentials = true
             }
         val source = UrlBasedCorsConfigurationSource()
         source.registerCorsConfiguration("/**", configuration)
