@@ -11,10 +11,8 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor
 import org.springframework.messaging.support.ChannelInterceptor
 import org.springframework.messaging.support.MessageHeaderAccessor
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
-import org.springframework.security.config.annotation.web.socket.EnableWebSocketSecurity
 
 @Configuration
-@EnableWebSocketSecurity
 class WebSocketAuthInterceptor(
     private val jwtService: JwtService,
     private val userDetailsService: CustomUserDetailsService,
@@ -40,6 +38,7 @@ class WebSocketAuthInterceptor(
                     if (userDetails.isEnabled) {
                         accessor.user =
                             UsernamePasswordAuthenticationToken(
+                                userDetails,
                                 null,
                                 userDetails.authorities,
                             )

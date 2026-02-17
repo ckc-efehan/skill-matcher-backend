@@ -3,8 +3,9 @@ package org.efehan.skillmatcherbackend.core.chat
 import jakarta.validation.Validator
 import org.efehan.skillmatcherbackend.core.auth.SecurityUser
 import org.springframework.messaging.handler.annotation.MessageMapping
-import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.stereotype.Controller
+import java.security.Principal
 
 @Controller
 class ChatWebSocketController(
@@ -13,7 +14,7 @@ class ChatWebSocketController(
 ) {
     @MessageMapping("/chat.send")
     fun sendMessage(
-        @AuthenticationPrincipal securityUser: SecurityUser,
+        principal: Principal,
         request: SendMessageRequest,
     ) {
         val violations = validator.validate(request)
@@ -21,6 +22,7 @@ class ChatWebSocketController(
             return
         }
 
+        val securityUser = (principal as UsernamePasswordAuthenticationToken).principal as SecurityUser
         chatService.sendMessage(securityUser.user, request.conversationId, request.content)
     }
 }

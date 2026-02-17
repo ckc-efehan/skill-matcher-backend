@@ -14,27 +14,32 @@ import org.efehan.skillmatcherbackend.persistence.SkillRepository
 import org.efehan.skillmatcherbackend.persistence.UserAvailabilityRepository
 import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.persistence.UserSkillRepository
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Import
-import org.springframework.http.MediaType
+import org.springframework.messaging.converter.JacksonJsonMessageConverter
+import org.springframework.messaging.simp.stomp.StompHeaders
+import org.springframework.messaging.simp.stomp.StompSession
+import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.web.servlet.MockHttpServletRequestDsl
-import org.springframework.test.web.servlet.MockMvc
-import tools.jackson.databind.ObjectMapper
+import org.springframework.web.socket.WebSocketHttpHeaders
+import org.springframework.web.socket.client.standard.StandardWebSocketClient
+import org.springframework.web.socket.messaging.WebSocketStompClient
+import tools.jackson.databind.json.JsonMapper
+import java.util.concurrent.TimeUnit
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration::class)
 @ActiveProfiles("test")
-abstract class AbstractIntegrationTest {
-    @Autowired
-    protected lateinit var mockMvc: MockMvc
+abstract class AbstractWebSocketIntegrationTest {
+    @LocalServerPort
+    protected var port: Int = 0
 
     @Autowired
-    protected lateinit var objectMapper: ObjectMapper
+    protected lateinit var jsonMapper: JsonMapper
 
     @Autowired
     protected lateinit var userRepository: UserRepository
@@ -75,8 +80,25 @@ abstract class AbstractIntegrationTest {
     @Autowired
     protected lateinit var conversationRepository: ConversationRepository
 
+    protected lateinit var stompClient: WebSocketStompClient
+
+    private val sessions = mutableListOf<StompSession>()
+
     @BeforeEach
-    fun cleanUp() {
+    fun setUp() {
+        cleanUp()
+
+        stompClient = WebSocketStompClient(StandardWebSocketClient())
+        stompClient.messageConverter = JacksonJsonMessageConverter(jsonMapper)
+    }
+
+    @AfterEach
+    fun tearDown() {
+        sessions.forEach { if (it.isConnected) it.disconnect() }
+        sessions.clear()
+    }
+
+    protected fun cleanUp() {
         chatMessageRepository.deleteAll()
         conversationRepository.deleteAll()
         projectMemberRepository.deleteAll()
@@ -92,8 +114,28 @@ abstract class AbstractIntegrationTest {
         roleRepository.deleteAll()
     }
 
-    protected fun MockHttpServletRequestDsl.withBodyRequest(body: Any) {
-        contentType = MediaType.APPLICATION_JSON
-        content = objectMapper.writeValueAsString(body)
+    protected fun connectWithAuth(token: String): StompSession {
+        val url = "ws://localhost:$port/ws"
+        val connectHeaders = StompHeaders()
+        connectHeaders["Authorization"] = "Bearer $token"
+
+        val session =
+            stompClient
+                .connectAsync(
+                    url,
+                    WebSocketHttpHeaders(),
+                    connectHeaders,
+                    object : StompSessionHandlerAdapter() {
+                        override fun handleTransportError(
+                            session: StompSession,
+                            exception: Throwable,
+                        ) {
+                            System.err.println("WebSocket transport error: ${exception.message}")
+                        }
+                    },
+                ).get(5, TimeUnit.SECONDS)
+
+        sessions.add(session)
+        return session
     }
 }

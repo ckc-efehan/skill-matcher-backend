@@ -129,10 +129,10 @@ class ChatService(
                 ),
             )
 
-        val recipientId = if (conversation.userOne.id == user.id) conversation.userTwo.id else conversation.userOne.id
+        val recipientEmail = if (conversation.userOne.id == user.id) conversation.userTwo.email else conversation.userOne.email
         val response = message.toResponse()
-        messagingTemplate.convertAndSendToUser(recipientId, "/queue/messages", response)
-        messagingTemplate.convertAndSendToUser(user.id, "/queue/messages", response)
+        messagingTemplate.convertAndSendToUser(recipientEmail, "/queue/messages", response)
+        messagingTemplate.convertAndSendToUser(user.email, "/queue/messages", response)
 
         return message
     }
