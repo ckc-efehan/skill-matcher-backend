@@ -29,7 +29,7 @@ data class ChatMessageResponse(
     val conversationId: String,
     val senderId: String,
     val content: String,
-    val createdDate: Instant,
+    val sentAt: Instant,
 )
 
 data class ChatUserResponse(

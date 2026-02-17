@@ -23,6 +23,8 @@ class ChatMessageModel(
     val sender: UserModel,
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     val content: String,
+    @Column(name = "sent_at", nullable = false)
+    val sentAt: Instant,
 ) : AuditingBaseEntity() {
     fun toResponse() =
         ChatMessageResponse(
@@ -30,7 +32,7 @@ class ChatMessageModel(
             conversationId = conversation.id,
             senderId = sender.id,
             content = content,
-            createdDate = createdDate!!,
+            sentAt = sentAt,
         )
 }
 
@@ -40,8 +42,8 @@ interface ChatMessageRepository : JpaRepository<ChatMessageModel, String> {
         """
           SELECT m FROM ChatMessageModel m
           WHERE m.conversation = :conversation
-            AND m.createdDate < :before
-          ORDER BY m.createdDate DESC
+            AND m.sentAt < :before
+          ORDER BY m.sentAt DESC
           """,
     )
     fun findByConversationBefore(
@@ -50,14 +52,14 @@ interface ChatMessageRepository : JpaRepository<ChatMessageModel, String> {
         pageable: Pageable,
     ): List<ChatMessageModel>
 
-    fun findTopByConversationOrderByCreatedDateDesc(conversation: ConversationModel): ChatMessageModel?
+    fun findTopByConversationOrderBySentAtDesc(conversation: ConversationModel): ChatMessageModel?
 
     @Query(
         """
           SELECT m FROM ChatMessageModel m
           WHERE m.conversation IN :conversations
-            AND m.createdDate = (
-                SELECT MAX(m2.createdDate) FROM ChatMessageModel m2
+            AND m.sentAt = (
+                SELECT MAX(m2.sentAt) FROM ChatMessageModel m2
                 WHERE m2.conversation = m.conversation
             )
           """,

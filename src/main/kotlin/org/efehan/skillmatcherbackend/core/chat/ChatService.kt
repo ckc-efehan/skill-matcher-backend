@@ -30,7 +30,7 @@ class ChatService(
         messageRepo.findLastMessagesByConversations(conversations).associateBy { it.conversation.id }
 
     fun getLastMessage(conversation: ConversationModel): ChatMessageModel? =
-        messageRepo.findTopByConversationOrderByCreatedDateDesc(conversation)
+        messageRepo.findTopByConversationOrderBySentAtDesc(conversation)
 
     fun getMessages(
         user: UserModel,
@@ -117,12 +117,15 @@ class ChatService(
             )
         }
 
+        val sentAt = Instant.now()
+
         val message =
             messageRepo.save(
                 ChatMessageModel(
                     conversation = conversation,
                     sender = user,
                     content = content,
+                    sentAt = sentAt,
                 ),
             )
 
