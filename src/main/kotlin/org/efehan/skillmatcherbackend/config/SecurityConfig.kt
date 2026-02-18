@@ -45,6 +45,7 @@ class SecurityConfig(
                         "/api/auth/password-reset/**",
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
+                        "/ws/**",
                     ).permitAll()
                 it.requestMatchers("/api/admin/**").hasRole("ADMIN")
                 it.anyRequest().authenticated()

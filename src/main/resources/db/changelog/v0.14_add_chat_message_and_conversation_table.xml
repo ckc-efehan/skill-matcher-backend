@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-5.0.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+    <changeSet id="1771266156799-7" author="efehan">
+        <createTable tableName="chat_messages">
+            <column name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_chat_messages"/>
+            </column>
+            <column name="created_date" type="DATETIME"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="last_modified_by" type="VARCHAR(255)"/>
+            <column name="last_modified_date" type="DATETIME"/>
+            <column name="conversation_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sender_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="content" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1771266156799-8" author="efehan">
+        <createTable tableName="conversations">
+            <column name="id" type="VARCHAR(255)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pk_conversations"/>
+            </column>
+            <column name="created_date" type="DATETIME"/>
+            <column name="created_by" type="VARCHAR(255)"/>
+            <column name="last_modified_by" type="VARCHAR(255)"/>
+            <column name="last_modified_date" type="DATETIME"/>
+            <column name="user_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_two_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet id="1771266156799-9" author="efehan">
+        <addForeignKeyConstraint baseColumnNames="conversation_id" baseTableName="chat_messages"
+                                 constraintName="FK_CHAT_MESSAGES_ON_CONVERSATION" referencedColumnNames="id"
+                                 referencedTableName="conversations"/>
+    </changeSet>
+    <changeSet id="1771266156799-10" author="efehan">
+        <addForeignKeyConstraint baseColumnNames="sender_id" baseTableName="chat_messages"
+                                 constraintName="FK_CHAT_MESSAGES_ON_SENDER" referencedColumnNames="id"
+                                 referencedTableName="users"/>
+    </changeSet>
+    <changeSet id="1771266156799-11" author="efehan">
+        <addForeignKeyConstraint baseColumnNames="user_id" baseTableName="conversations"
+                                 constraintName="FK_CONVERSATIONS_ON_USER" referencedColumnNames="id"
+                                 referencedTableName="users"/>
+    </changeSet>
+    <changeSet id="1771266156799-12" author="efehan">
+        <addForeignKeyConstraint baseColumnNames="user_two_id" baseTableName="conversations"
+                                 constraintName="FK_CONVERSATIONS_ON_USER_TWO" referencedColumnNames="id"
+                                 referencedTableName="users"/>
+    </changeSet>
+
+</databaseChangeLog>

@@ -63,6 +63,10 @@ class GlobalErrorCodeTest {
     val expectedAccountDisabledErrorCode = "ACCOUNT_DISABLED"
     val expectedMustChangePasswordErrorCode = "MUST_CHANGE_PASSWORD"
 
+    // Chat
+    val expectedConversationNotFoundErrorCode = "CONVERSATION_NOT_FOUND"
+    val expectedConversationAccessDeniedErrorCode = "CONVERSATION_ACCESS_DENIED"
+
     // General
     val expectedInternalServerErrorCode = "INTERNAL_SERVER_ERROR"
 
@@ -124,10 +128,14 @@ class GlobalErrorCodeTest {
         assertThat(expectedAccountDisabledErrorCode).isEqualTo(GlobalErrorCode.ACCOUNT_DISABLED.name)
         assertThat(expectedMustChangePasswordErrorCode).isEqualTo(GlobalErrorCode.MUST_CHANGE_PASSWORD.name)
 
+        // Chat
+        assertThat(expectedConversationNotFoundErrorCode).isEqualTo(GlobalErrorCode.CONVERSATION_NOT_FOUND.name)
+        assertThat(expectedConversationAccessDeniedErrorCode).isEqualTo(GlobalErrorCode.CONVERSATION_ACCESS_DENIED.name)
+
         // General
         assertThat(expectedInternalServerErrorCode).isEqualTo(GlobalErrorCode.INTERNAL_SERVER_ERROR.name)
 
-        assertThat(GlobalErrorCode.entries.size).isEqualTo(37)
+        assertThat(GlobalErrorCode.entries.size).isEqualTo(39)
     }
 
     @Test
