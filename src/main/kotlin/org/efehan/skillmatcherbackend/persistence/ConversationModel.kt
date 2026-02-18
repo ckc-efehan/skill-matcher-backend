@@ -24,6 +24,7 @@ class ConversationModel(
 ) : AuditingBaseEntity() {
     @Column(name = "last_message_at")
     var lastMessageAt: Instant? = null
+
     fun toResponse(
         currentUser: UserModel,
         lastMessage: ChatMessageModel?,
