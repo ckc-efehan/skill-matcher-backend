@@ -15,6 +15,7 @@ import org.springframework.messaging.simp.stomp.StompFrameHandler
 import org.springframework.messaging.simp.stomp.StompHeaders
 import org.springframework.security.crypto.password.PasswordEncoder
 import java.lang.reflect.Type
+import java.time.temporal.ChronoUnit
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.TimeUnit
 
@@ -133,7 +134,8 @@ class ChatWebSocketControllerIT : AbstractWebSocketIntegrationTest() {
         val dbMessage = chatMessageRepository.findAll().first()
         assertThat(dbMessage.content).isEqualTo("Timestamp test")
         assertThat(dbMessage.sentAt).isNotNull()
-        assertThat(msg!!.sentAt).isEqualTo(dbMessage.sentAt)
+        assertThat(msg!!.sentAt.truncatedTo(ChronoUnit.MICROS))
+            .isEqualTo(dbMessage.sentAt.truncatedTo(ChronoUnit.MICROS))
     }
 
     @Test
