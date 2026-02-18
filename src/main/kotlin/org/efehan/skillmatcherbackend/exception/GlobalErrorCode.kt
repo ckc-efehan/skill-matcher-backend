@@ -10,7 +10,7 @@ enum class GlobalErrorCode(
     USER_SKILL_ACCESS_DENIED("Not allowed to modify this user skill."),
     PROJECT_SKILL_ACCESS_DENIED("Not allowed to modify this project skill."),
     USER_MUST_LOGIN("User must be logged in."),
-    CONVERSATION_ACCESS_DENIED("Not allowed to modify conversation."),
+    CONVERSATION_ACCESS_DENIED("Not allowed to access this conversation."),
 
     // Validation
     VALIDATION_ERROR("Request validation failed."),

@@ -1,5 +1,6 @@
 package org.efehan.skillmatcherbackend.persistence
 
+import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
@@ -9,6 +10,7 @@ import org.efehan.skillmatcherbackend.core.chat.ConversationResponse
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
+import java.time.Instant
 
 @Entity
 @Table(name = "conversations")
@@ -20,6 +22,8 @@ class ConversationModel(
     @JoinColumn(name = "user_two_id", nullable = false)
     val userTwo: UserModel,
 ) : AuditingBaseEntity() {
+    @Column(name = "last_message_at")
+    var lastMessageAt: Instant? = null
     fun toResponse(
         currentUser: UserModel,
         lastMessage: ChatMessageModel?,
@@ -45,7 +49,7 @@ interface ConversationRepository : JpaRepository<ConversationModel, String> {
         """
           SELECT c FROM ConversationModel c
           WHERE c.userOne = :user OR c.userTwo = :user
-          ORDER BY c.lastModifiedDate DESC
+          ORDER BY c.lastMessageAt DESC NULLS LAST
           """,
     )
     fun findByUser(user: UserModel): List<ConversationModel>

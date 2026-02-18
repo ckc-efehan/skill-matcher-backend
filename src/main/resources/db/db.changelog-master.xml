@@ -29,4 +29,5 @@ http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
     <include file="db/changelog/v0.14_add_chat_message_and_conversation_table.xml"/>
     <include file="db/changelog/v0.15_add_sent_at_to_chat_messages.xml"/>
     <include file="db/changelog/v0.16_add_chat_indexes.xml"/>
+    <include file="db/changelog/v0.17_add_last_message_at_to_conversations.xml"/>
 </databaseChangeLog>
