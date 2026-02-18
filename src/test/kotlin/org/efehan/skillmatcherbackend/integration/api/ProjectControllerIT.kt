@@ -2,12 +2,11 @@ package org.efehan.skillmatcherbackend.integration.api
 
 import org.assertj.core.api.Assertions.assertThat
 import org.efehan.skillmatcherbackend.core.auth.JwtService
-import org.efehan.skillmatcherbackend.core.project.CreateProjectRequest
-import org.efehan.skillmatcherbackend.core.project.UpdateProjectRequest
+import org.efehan.skillmatcherbackend.fixtures.builder.ProjectBuilder
+import org.efehan.skillmatcherbackend.fixtures.requests.ProjectFixtures
 import org.efehan.skillmatcherbackend.persistence.ProjectMemberModel
 import org.efehan.skillmatcherbackend.persistence.ProjectMemberStatus
 import org.efehan.skillmatcherbackend.persistence.ProjectModel
-import org.efehan.skillmatcherbackend.persistence.ProjectStatus
 import org.efehan.skillmatcherbackend.persistence.RoleModel
 import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.testcontainers.AbstractIntegrationTest
@@ -20,7 +19,6 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
 import java.time.Instant
-import java.time.LocalDate
 
 @DisplayName("ProjectController Integration Tests")
 class ProjectControllerIT : AbstractIntegrationTest() {
@@ -46,8 +44,7 @@ class ProjectControllerIT : AbstractIntegrationTest() {
     }
 
     private fun createEmployerAndGetToken(): Pair<UserModel, String> {
-        roleRepository.save(RoleModel("EMPLOYER", null))
-        val role = roleRepository.findByName("EMPLOYER")!!
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
         val user =
             UserModel(
                 email = "employer@firma.de",
@@ -76,31 +73,13 @@ class ProjectControllerIT : AbstractIntegrationTest() {
         return user to jwtService.generateAccessToken(user)
     }
 
-    private fun createProject(owner: UserModel): ProjectModel =
-        projectRepository.save(
-            ProjectModel(
-                name = "Skill Matcher",
-                description = "Internal tool",
-                status = ProjectStatus.PLANNED,
-                startDate = LocalDate.of(2026, 3, 1),
-                endDate = LocalDate.of(2026, 9, 1),
-                maxMembers = 5,
-                owner = owner,
-            ),
-        )
+    private fun createProject(owner: UserModel): ProjectModel = projectRepository.save(ProjectBuilder().build(owner = owner))
 
     @Test
     fun `should create project and return 201`() {
         // given
-        val (_, token) = createProjectManagerAndGetToken()
-        val request =
-            CreateProjectRequest(
-                name = "Skill Matcher",
-                description = "Internal tool",
-                startDate = LocalDate.of(2026, 3, 1),
-                endDate = LocalDate.of(2026, 9, 1),
-                maxMembers = 5,
-            )
+        val (owner, token) = createProjectManagerAndGetToken()
+        val request = ProjectFixtures.buildCreateProjectRequest()
 
         // when & then
         mockMvc
@@ -110,13 +89,13 @@ class ProjectControllerIT : AbstractIntegrationTest() {
             }.andExpect {
                 status { isCreated() }
                 jsonPath("$.id") { isNotEmpty() }
-                jsonPath("$.name") { value("Skill Matcher") }
-                jsonPath("$.description") { value("Internal tool") }
+                jsonPath("$.name") { value(request.name) }
+                jsonPath("$.description") { value(request.description) }
                 jsonPath("$.status") { value("PLANNED") }
-                jsonPath("$.startDate") { value("2026-03-01") }
-                jsonPath("$.endDate") { value("2026-09-01") }
-                jsonPath("$.maxMembers") { value(5) }
-                jsonPath("$.ownerName") { value("Max Mustermann") }
+                jsonPath("$.startDate") { value(request.startDate.toString()) }
+                jsonPath("$.endDate") { value(request.endDate.toString()) }
+                jsonPath("$.maxMembers") { value(request.maxMembers) }
+                jsonPath("$.ownerName") { value("${owner.firstName} ${owner.lastName}") }
                 jsonPath("$.createdDate") { isNotEmpty() }
             }
     }
@@ -124,14 +103,7 @@ class ProjectControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 400 when a field is blank`() {
         val (_, token) = createProjectManagerAndGetToken()
-        val request =
-            CreateProjectRequest(
-                name = "",
-                description = "Internal tool",
-                startDate = LocalDate.of(2026, 3, 1),
-                endDate = LocalDate.of(2026, 9, 1),
-                maxMembers = 5,
-            )
+        val request = ProjectFixtures.buildCreateProjectRequest(name = "")
 
         // when & then
         mockMvc
@@ -149,15 +121,7 @@ class ProjectControllerIT : AbstractIntegrationTest() {
         // when & then
         mockMvc
             .post("/api/projects") {
-                withBodyRequest(
-                    CreateProjectRequest(
-                        name = "Skill Matcher",
-                        description = "Internal tool",
-                        startDate = LocalDate.of(2026, 3, 1),
-                        endDate = LocalDate.of(2026, 9, 1),
-                        maxMembers = 5,
-                    ),
-                )
+                withBodyRequest(ProjectFixtures.buildCreateProjectRequest())
             }.andExpect {
                 status { isUnauthorized() }
             }
@@ -166,20 +130,12 @@ class ProjectControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 403 when employer tries to create project`() {
         val (_, token) = createEmployerAndGetToken()
-        val request =
-            CreateProjectRequest(
-                name = "Skill Matcher",
-                description = "Internal tool",
-                startDate = LocalDate.of(2026, 3, 1),
-                endDate = LocalDate.of(2026, 9, 1),
-                maxMembers = 5,
-            )
 
         // when & then
         mockMvc
             .post("/api/projects") {
                 header("Authorization", "Bearer $token")
-                withBodyRequest(request)
+                withBodyRequest(ProjectFixtures.buildCreateProjectRequest())
             }.andExpect {
                 status { isForbidden() }
                 jsonPath("$.errorCode") { value("FORBIDDEN") }
@@ -199,13 +155,13 @@ class ProjectControllerIT : AbstractIntegrationTest() {
             }.andExpect {
                 status { isOk() }
                 jsonPath("$.id") { value(project.id) }
-                jsonPath("$.name") { value("Skill Matcher") }
-                jsonPath("$.description") { value("Internal tool") }
-                jsonPath("$.status") { value("PLANNED") }
-                jsonPath("$.startDate") { value("2026-03-01") }
-                jsonPath("$.endDate") { value("2026-09-01") }
-                jsonPath("$.maxMembers") { value(5) }
-                jsonPath("$.ownerName") { value("Max Mustermann") }
+                jsonPath("$.name") { value(project.name) }
+                jsonPath("$.description") { value(project.description) }
+                jsonPath("$.status") { value(project.status.name) }
+                jsonPath("$.startDate") { value(project.startDate.toString()) }
+                jsonPath("$.endDate") { value(project.endDate.toString()) }
+                jsonPath("$.maxMembers") { value(project.maxMembers) }
+                jsonPath("$.ownerName") { value("${owner.firstName} ${owner.lastName}") }
             }
     }
 
@@ -239,17 +195,7 @@ class ProjectControllerIT : AbstractIntegrationTest() {
         // given
         val (owner, token) = createProjectManagerAndGetToken()
         createProject(owner)
-        projectRepository.save(
-            ProjectModel(
-                name = "Another Project",
-                description = "Another description",
-                status = ProjectStatus.ACTIVE,
-                startDate = LocalDate.of(2026, 4, 1),
-                endDate = LocalDate.of(2026, 12, 1),
-                maxMembers = 10,
-                owner = owner,
-            ),
-        )
+        projectRepository.save(ProjectBuilder().build(owner = owner, name = "Another Project"))
 
         // when & then
         mockMvc
@@ -293,15 +239,7 @@ class ProjectControllerIT : AbstractIntegrationTest() {
         // given
         val (owner, token) = createProjectManagerAndGetToken()
         val project = createProject(owner)
-        val request =
-            UpdateProjectRequest(
-                name = "Updated Name",
-                description = "Updated description",
-                status = "ACTIVE",
-                startDate = LocalDate.of(2026, 4, 1),
-                endDate = LocalDate.of(2026, 12, 1),
-                maxMembers = 8,
-            )
+        val request = ProjectFixtures.buildUpdateProjectRequest(name = "Updated Name")
 
         // when & then
         mockMvc
@@ -310,12 +248,12 @@ class ProjectControllerIT : AbstractIntegrationTest() {
                 withBodyRequest(request)
             }.andExpect {
                 status { isOk() }
-                jsonPath("$.name") { value("Updated Name") }
-                jsonPath("$.description") { value("Updated description") }
-                jsonPath("$.status") { value("ACTIVE") }
-                jsonPath("$.startDate") { value("2026-04-01") }
-                jsonPath("$.endDate") { value("2026-12-01") }
-                jsonPath("$.maxMembers") { value(8) }
+                jsonPath("$.name") { value(request.name) }
+                jsonPath("$.description") { value(request.description) }
+                jsonPath("$.status") { value(request.status) }
+                jsonPath("$.startDate") { value(request.startDate.toString()) }
+                jsonPath("$.endDate") { value(request.endDate.toString()) }
+                jsonPath("$.maxMembers") { value(request.maxMembers) }
             }
     }
 
@@ -323,21 +261,12 @@ class ProjectControllerIT : AbstractIntegrationTest() {
     fun `should return 404 when updating nonexistent project`() {
         // given
         val (_, token) = createProjectManagerAndGetToken()
-        val request =
-            UpdateProjectRequest(
-                name = "Updated",
-                description = "Updated",
-                status = "ACTIVE",
-                startDate = LocalDate.of(2026, 4, 1),
-                endDate = LocalDate.of(2026, 12, 1),
-                maxMembers = 8,
-            )
 
         // when & then
         mockMvc
             .put("/api/projects/nonexistent-id") {
                 header("Authorization", "Bearer $token")
-                withBodyRequest(request)
+                withBodyRequest(ProjectFixtures.buildUpdateProjectRequest())
             }.andExpect {
                 status { isNotFound() }
                 jsonPath("$.errorCode") { value("PROJECT_NOT_FOUND") }
@@ -350,21 +279,12 @@ class ProjectControllerIT : AbstractIntegrationTest() {
         val (owner, _) = createProjectManagerAndGetToken()
         val project = createProject(owner)
         val (_, otherToken) = createOtherProjectManagerAndGetToken()
-        val request =
-            UpdateProjectRequest(
-                name = "Hijacked",
-                description = "Hijacked",
-                status = "ACTIVE",
-                startDate = LocalDate.of(2026, 4, 1),
-                endDate = LocalDate.of(2026, 12, 1),
-                maxMembers = 8,
-            )
 
         // when & then
         mockMvc
             .put("/api/projects/${project.id}") {
                 header("Authorization", "Bearer $otherToken")
-                withBodyRequest(request)
+                withBodyRequest(ProjectFixtures.buildUpdateProjectRequest())
             }.andExpect {
                 status { isForbidden() }
                 jsonPath("$.errorCode") { value("PROJECT_ACCESS_DENIED") }
@@ -377,21 +297,12 @@ class ProjectControllerIT : AbstractIntegrationTest() {
         val (owner, _) = createProjectManagerAndGetToken()
         val project = createProject(owner)
         val (_, employerToken) = createEmployerAndGetToken()
-        val request =
-            UpdateProjectRequest(
-                name = "Hijacked",
-                description = "Hijacked",
-                status = "ACTIVE",
-                startDate = LocalDate.of(2026, 4, 1),
-                endDate = LocalDate.of(2026, 12, 1),
-                maxMembers = 8,
-            )
 
         // when & then
         mockMvc
             .put("/api/projects/${project.id}") {
                 header("Authorization", "Bearer $employerToken")
-                withBodyRequest(request)
+                withBodyRequest(ProjectFixtures.buildUpdateProjectRequest())
             }.andExpect {
                 status { isForbidden() }
             }
@@ -402,21 +313,12 @@ class ProjectControllerIT : AbstractIntegrationTest() {
         // given
         val (owner, token) = createProjectManagerAndGetToken()
         val project = createProject(owner)
-        val request =
-            UpdateProjectRequest(
-                name = "",
-                description = "Updated",
-                status = "ACTIVE",
-                startDate = LocalDate.of(2026, 4, 1),
-                endDate = LocalDate.of(2026, 12, 1),
-                maxMembers = 8,
-            )
 
         // when & then
         mockMvc
             .put("/api/projects/${project.id}") {
                 header("Authorization", "Bearer $token")
-                withBodyRequest(request)
+                withBodyRequest(ProjectFixtures.buildUpdateProjectRequest(name = ""))
             }.andExpect {
                 status { isBadRequest() }
                 jsonPath("$.errorCode") { value("VALIDATION_ERROR") }
@@ -428,16 +330,7 @@ class ProjectControllerIT : AbstractIntegrationTest() {
         // when & then
         mockMvc
             .put("/api/projects/some-id") {
-                withBodyRequest(
-                    UpdateProjectRequest(
-                        name = "Updated",
-                        description = "Updated",
-                        status = "ACTIVE",
-                        startDate = LocalDate.of(2026, 4, 1),
-                        endDate = LocalDate.of(2026, 12, 1),
-                        maxMembers = 8,
-                    ),
-                )
+                withBodyRequest(ProjectFixtures.buildUpdateProjectRequest())
             }.andExpect {
                 status { isUnauthorized() }
             }

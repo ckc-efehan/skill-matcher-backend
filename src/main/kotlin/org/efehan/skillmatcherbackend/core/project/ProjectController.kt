@@ -10,8 +10,9 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.efehan.skillmatcherbackend.core.auth.SecurityUser
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCodeResponse
+import org.efehan.skillmatcherbackend.persistence.ProjectModel
+import org.efehan.skillmatcherbackend.persistence.ProjectStatus
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -136,10 +138,20 @@ class ProjectController(
     )
     @PostMapping
     @PreAuthorize("hasRole('PROJECTMANAGER')")
+    @ResponseStatus(HttpStatus.CREATED)
     fun createProject(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @Valid @RequestBody request: CreateProjectRequest,
-    ): ResponseEntity<ProjectDto> = ResponseEntity.status(HttpStatus.CREATED).body(service.createProject(securityUser.user, request))
+    ): ProjectDto =
+        service
+            .createProject(
+                owner = securityUser.user,
+                name = request.name,
+                description = request.description,
+                startDate = request.startDate,
+                endDate = request.endDate,
+                maxMembers = request.maxMembers,
+            ).toDto()
 
     @Operation(
         summary = "Get a project",
@@ -220,9 +232,10 @@ class ProjectController(
         ],
     )
     @GetMapping("/{id}")
+    @ResponseStatus(HttpStatus.OK)
     fun getProject(
         @PathVariable id: String,
-    ): ResponseEntity<ProjectDto> = ResponseEntity.ok(service.getProject(id))
+    ): ProjectDto = service.getProject(id).toDto()
 
     @Operation(
         summary = "Get all projects",
@@ -258,7 +271,8 @@ class ProjectController(
         ],
     )
     @GetMapping
-    fun getAllProjects(): ResponseEntity<List<ProjectDto>> = ResponseEntity.ok(service.getAllProjects())
+    @ResponseStatus(HttpStatus.OK)
+    fun getAllProjects(): List<ProjectDto> = service.getAllProjects().map(ProjectModel::toDto)
 
     @Operation(
         summary = "Update a project",
@@ -388,11 +402,23 @@ class ProjectController(
     )
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('PROJECTMANAGER')")
+    @ResponseStatus(HttpStatus.OK)
     fun updateProject(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @PathVariable id: String,
         @Valid @RequestBody request: UpdateProjectRequest,
-    ): ResponseEntity<ProjectDto> = ResponseEntity.ok(service.updateProject(securityUser.user, id, request))
+    ): ProjectDto =
+        service
+            .updateProject(
+                user = securityUser.user,
+                projectId = id,
+                name = request.name,
+                description = request.description,
+                status = ProjectStatus.valueOf(request.status),
+                startDate = request.startDate,
+                endDate = request.endDate,
+                maxMembers = request.maxMembers,
+            ).toDto()
 
     @Operation(
         summary = "Delete a project",
@@ -472,11 +498,11 @@ class ProjectController(
     )
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('PROJECTMANAGER')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun deleteProject(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @PathVariable id: String,
-    ): ResponseEntity<Void> {
+    ) {
         service.deleteProject(securityUser.user, id)
-        return ResponseEntity.noContent().build()
     }
 }
