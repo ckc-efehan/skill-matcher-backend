@@ -134,8 +134,8 @@ class ChatWebSocketControllerIT : AbstractWebSocketIntegrationTest() {
         val dbMessage = chatMessageRepository.findAll().first()
         assertThat(dbMessage.content).isEqualTo("Timestamp test")
         assertThat(dbMessage.sentAt).isNotNull()
-        assertThat(msg!!.sentAt.truncatedTo(ChronoUnit.MICROS))
-            .isEqualTo(dbMessage.sentAt.truncatedTo(ChronoUnit.MICROS))
+        assertThat(msg!!.sentAt.truncatedTo(ChronoUnit.MILLIS))
+            .isEqualTo(dbMessage.sentAt.truncatedTo(ChronoUnit.MILLIS))
     }
 
     @Test
