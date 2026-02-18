@@ -116,7 +116,7 @@ class ChatController(
                                 value = """
                                 {
                                     "errorCode": "CONVERSATION_ACCESS_DENIED",
-                                    "errorMessage": "Not allowed to modify Conversation."
+                                    "errorMessage": "Not allowed to modify conversation."
                                 }
                                 """,
                             ),
@@ -189,8 +189,8 @@ class ChatController(
                                 name = "Self chat",
                                 value = """
                                 {
-                                    "errorCode": "CONVERSATION_SELF_CHAT",
-                                    "errorMessage": "Cannot create a conversation with yourself."
+                                    "errorCode": "VALIDATION_ERROR",
+                                    "errorMessage": "Request validation failed."
                                 }
                                 """,
                             ),

@@ -9,6 +9,7 @@ import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
 import org.springframework.messaging.simp.SimpMessagingTemplate
@@ -26,8 +27,10 @@ class ChatService(
 ) {
     fun getConversations(user: UserModel): List<ConversationModel> = conversationRepo.findByUser(user)
 
-    fun getLastMessages(conversations: List<ConversationModel>): Map<String, ChatMessageModel> =
-        messageRepo.findLastMessagesByConversations(conversations).associateBy { it.conversation.id }
+    fun getLastMessages(conversations: List<ConversationModel>): Map<String, ChatMessageModel> {
+        if (conversations.isEmpty()) return emptyMap()
+        return messageRepo.findLastMessagesByConversations(conversations).associateBy { it.conversation.id }
+    }
 
     fun getLastMessage(conversation: ConversationModel): ChatMessageModel? =
         messageRepo.findTopByConversationOrderBySentAtDesc(conversation)
@@ -57,9 +60,8 @@ class ChatService(
             )
         }
 
-        val messages = messageRepo.findByConversationBefore(conversation, before, PageRequest.of(0, limit))
-
-        return messages
+        val safeLimit = limit.coerceIn(1, 100)
+        return messageRepo.findByConversationBefore(conversation, before, PageRequest.of(0, safeLimit))
     }
 
     fun createConversation(
@@ -88,9 +90,13 @@ class ChatService(
 
         val userOne = if (user.id < partner.id) user else partner
         val userTwo = if (user.id < partner.id) partner else user
-        val conversation = conversationRepo.save(ConversationModel(userOne = userOne, userTwo = userTwo))
 
-        return conversation to true
+        return try {
+            val conversation = conversationRepo.save(ConversationModel(userOne = userOne, userTwo = userTwo))
+            conversation to true
+        } catch (_: DataIntegrityViolationException) {
+            conversationRepo.findByUsers(user, partner)!! to false
+        }
     }
 
     fun sendMessage(

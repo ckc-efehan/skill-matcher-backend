@@ -21,7 +21,7 @@ class WebSocketConfig(
     override fun registerStompEndpoints(registry: StompEndpointRegistry) {
         registry
             .addEndpoint("/ws")
-            .setAllowedOriginPatterns("*")
+            .setAllowedOrigins("http://localhost:5173")
     }
 
     override fun configureClientInboundChannel(registration: ChannelRegistration) {

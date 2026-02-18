@@ -6,6 +6,7 @@ import org.efehan.skillmatcherbackend.shared.exceptions.InvalidTokenException
 import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
+import org.springframework.messaging.MessageDeliveryException
 import org.springframework.messaging.simp.stomp.StompCommand
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor
 import org.springframework.messaging.support.ChannelInterceptor
@@ -29,22 +30,24 @@ class WebSocketAuthInterceptor(
                     .getFirstNativeHeader("Authorization")
                     ?.removePrefix("Bearer ")
                     ?.ifBlank { null }
+                    ?: throw MessageDeliveryException("Missing or empty Authorization header")
 
-            if (token != null) {
-                try {
-                    val email = jwtService.getEmail(token)
-                    val userDetails = userDetailsService.loadUserByUsername(email)
+            try {
+                val email = jwtService.getEmail(token)
+                val userDetails = userDetailsService.loadUserByUsername(email)
 
-                    if (userDetails.isEnabled) {
-                        accessor.user =
-                            UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.authorities,
-                            )
-                    }
-                } catch (_: InvalidTokenException) {
+                if (!userDetails.isEnabled) {
+                    throw MessageDeliveryException("User account is disabled")
                 }
+
+                accessor.user =
+                    UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.authorities,
+                    )
+            } catch (_: InvalidTokenException) {
+                throw MessageDeliveryException("Invalid or expired token")
             }
         }
         return message

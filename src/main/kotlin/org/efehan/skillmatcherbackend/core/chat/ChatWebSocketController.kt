@@ -22,7 +22,8 @@ class ChatWebSocketController(
             return
         }
 
-        val securityUser = (principal as UsernamePasswordAuthenticationToken).principal as SecurityUser
+        val authToken = principal as? UsernamePasswordAuthenticationToken ?: return
+        val securityUser = authToken.principal as? SecurityUser ?: return
         chatService.sendMessage(securityUser.user, request.conversationId, request.content)
     }
 }

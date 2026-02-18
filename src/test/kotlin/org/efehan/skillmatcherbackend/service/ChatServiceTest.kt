@@ -112,14 +112,12 @@ class ChatServiceTest {
 
     @Test
     fun `getLastMessages returns empty map for empty input`() {
-        // given
-        every { messageRepo.findLastMessagesByConversations(emptyList()) } returns emptyList()
-
         // when
         val result = chatService.getLastMessages(emptyList())
 
         // then
         assertThat(result).isEmpty()
+        verify(exactly = 0) { messageRepo.findLastMessagesByConversations(any()) }
     }
 
     @Test
