@@ -7,6 +7,7 @@ import jakarta.persistence.Index
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import org.efehan.skillmatcherbackend.core.admin.AdminUserDto
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
@@ -35,6 +36,17 @@ class UserModel(
 ) : AuditingBaseEntity() {
     @Column(name = "is_enabled", nullable = false)
     var isEnabled: Boolean = false
+
+    fun toAdminDto() =
+        AdminUserDto(
+            id = id,
+            email = email,
+            firstName = firstName,
+            lastName = lastName,
+            role = role.name,
+            isEnabled = isEnabled,
+            createdDate = createdDate,
+        )
 }
 
 @Repository

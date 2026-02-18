@@ -11,13 +11,13 @@ import jakarta.validation.Valid
 import org.efehan.skillmatcherbackend.core.invitation.InvitationService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCodeResponse
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -42,7 +42,7 @@ class AdminUserController(
                 content = [
                     Content(
                         mediaType = "application/json",
-                        schema = Schema(implementation = CreateUserResponse::class),
+                        schema = Schema(implementation = AdminUserDto::class),
                         examples = [
                             ExampleObject(
                                 name = "User created",
@@ -50,7 +50,11 @@ class AdminUserController(
                                 {
                                     "id": "550e8400-e29b-41d4-a716-446655440000",
                                     "email": "max.mustermann@firma.de",
-                                    "role": "EMPLOYER"
+                                    "firstName": null,
+                                    "lastName": null,
+                                    "role": "EMPLOYER",
+                                    "isEnabled": false,
+                                    "createdDate": "2026-02-18T12:00:00Z"
                                 }
                                 """,
                             ),
@@ -176,14 +180,10 @@ class AdminUserController(
         ],
     )
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     fun createUser(
-        @Valid
-        @RequestBody
-        request: CreateUserRequest,
-    ): ResponseEntity<CreateUserResponse> =
-        ResponseEntity.status(HttpStatus.CREATED).body(
-            adminUserService.createUser(request),
-        )
+        @Valid @RequestBody request: CreateUserRequest,
+    ): AdminUserDto = adminUserService.createUser(request.email, request.role).toAdminDto()
 
     @Operation(
         summary = "Resend invitation",
@@ -266,11 +266,11 @@ class AdminUserController(
         ],
     )
     @PostMapping("/{userId}/resend-invitation")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun resendInvitation(
         @PathVariable userId: String,
-    ): ResponseEntity<Void> {
+    ) {
         invitationService.resendInvitation(userId)
-        return ResponseEntity.noContent().build()
     }
 
     @Operation(
@@ -349,15 +349,12 @@ class AdminUserController(
         ],
     )
     @PatchMapping("/{userId}/status")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun updateUserStatus(
-        @PathVariable
-        userId: String,
-        @Valid
-        @RequestBody
-        request: UpdateUserStatusRequest,
-    ): ResponseEntity<Unit> {
+        @PathVariable userId: String,
+        @Valid @RequestBody request: UpdateUserStatusRequest,
+    ) {
         adminUserService.updateUserStatus(userId, request.enabled)
-        return ResponseEntity.noContent().build()
     }
 
     @Operation(
@@ -373,7 +370,7 @@ class AdminUserController(
                 content = [
                     Content(
                         mediaType = "application/json",
-                        schema = Schema(implementation = AdminUserListResponse::class),
+                        schema = Schema(implementation = AdminUserDto::class),
                         examples = [
                             ExampleObject(
                                 name = "User list",
@@ -442,7 +439,8 @@ class AdminUserController(
         ],
     )
     @GetMapping
-    fun listUsers(): ResponseEntity<List<AdminUserListResponse>> = ResponseEntity.ok(adminUserService.listUsers())
+    @ResponseStatus(HttpStatus.OK)
+    fun listUsers(): List<AdminUserDto> = adminUserService.listUsers().map { it.toAdminDto() }
 
     @Operation(
         summary = "Update user role",
@@ -525,13 +523,11 @@ class AdminUserController(
         ],
     )
     @PatchMapping("/{userId}/role")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun updateUserRole(
         @PathVariable userId: String,
-        @Valid
-        @RequestBody
-        request: UpdateUserRoleRequest,
-    ): ResponseEntity<Unit> {
+        @Valid @RequestBody request: UpdateUserRoleRequest,
+    ) {
         adminUserService.updateUserRole(userId, request.role)
-        return ResponseEntity.noContent().build()
     }
 }

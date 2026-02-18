@@ -8,6 +8,7 @@ import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.shared.exceptions.DuplicateEntryException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -20,29 +21,33 @@ class AdminUserService(
     private val invitationService: InvitationService,
     private val refreshTokenRepository: RefreshTokenRepository,
 ) {
-    fun createUser(request: CreateUserRequest): CreateUserResponse {
-        if (userRepository.existsByEmail(request.email)) {
+    fun createUser(
+        email: String,
+        roleName: String,
+    ): UserModel {
+        if (userRepository.existsByEmail(email)) {
             throw DuplicateEntryException(
                 resource = "User",
                 field = "email",
-                value = request.email,
+                value = email,
                 errorCode = GlobalErrorCode.USER_ALREADY_EXISTS,
                 status = HttpStatus.CONFLICT,
             )
         }
 
         val role =
-            roleRepository.findByName(request.role.uppercase()) ?: throw EntryNotFoundException(
-                resource = "Role",
-                field = "name",
-                value = request.role,
-                errorCode = GlobalErrorCode.ROLE_NOT_FOUND,
-                status = HttpStatus.NOT_FOUND,
-            )
+            roleRepository.findByName(roleName.uppercase())
+                ?: throw EntryNotFoundException(
+                    resource = "Role",
+                    field = "name",
+                    value = roleName,
+                    errorCode = GlobalErrorCode.ROLE_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
 
         val user =
             UserModel(
-                email = request.email,
+                email = email,
                 passwordHash = null,
                 firstName = null,
                 lastName = null,
@@ -54,11 +59,7 @@ class AdminUserService(
 
         invitationService.createAndSendInvitation(savedUser)
 
-        return CreateUserResponse(
-            id = savedUser.id,
-            email = savedUser.email,
-            role = role.name,
-        )
+        return savedUser
     }
 
     fun updateUserStatus(
@@ -66,17 +67,14 @@ class AdminUserService(
         enabled: Boolean,
     ) {
         val user =
-            userRepository
-                .findById(userId)
-                .orElseThrow {
-                    EntryNotFoundException(
-                        resource = "User",
-                        field = "id",
-                        value = userId,
-                        errorCode = GlobalErrorCode.USER_NOT_FOUND,
-                        status = HttpStatus.NOT_FOUND,
-                    )
-                }
+            userRepository.findByIdOrNull(userId)
+                ?: throw EntryNotFoundException(
+                    resource = "User",
+                    field = "id",
+                    value = userId,
+                    errorCode = GlobalErrorCode.USER_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
         user.isEnabled = enabled
         userRepository.save(user)
 
@@ -85,35 +83,21 @@ class AdminUserService(
         }
     }
 
-    fun listUsers(): List<AdminUserListResponse> =
-        userRepository.findAll().map { user ->
-            AdminUserListResponse(
-                id = user.id,
-                email = user.email,
-                firstName = user.firstName,
-                lastName = user.lastName,
-                role = user.role.name,
-                isEnabled = user.isEnabled,
-                createdDate = user.createdDate,
-            )
-        }
+    fun listUsers(): List<UserModel> = userRepository.findAll()
 
     fun updateUserRole(
         userId: String,
         roleName: String,
     ) {
         val user =
-            userRepository
-                .findById(userId)
-                .orElseThrow {
-                    EntryNotFoundException(
-                        resource = "User",
-                        field = "id",
-                        value = userId,
-                        errorCode = GlobalErrorCode.USER_NOT_FOUND,
-                        status = HttpStatus.NOT_FOUND,
-                    )
-                }
+            userRepository.findByIdOrNull(userId)
+                ?: throw EntryNotFoundException(
+                    resource = "User",
+                    field = "id",
+                    value = userId,
+                    errorCode = GlobalErrorCode.USER_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
 
         val role =
             roleRepository.findByName(roleName.uppercase())

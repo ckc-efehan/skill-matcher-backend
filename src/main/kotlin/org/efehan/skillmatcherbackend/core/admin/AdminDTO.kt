@@ -13,18 +13,17 @@ data class CreateUserRequest(
     val role: String,
 )
 
-data class CreateUserResponse(
-    val id: String,
-    val email: String,
-    val role: String,
-)
-
 data class UpdateUserStatusRequest(
     @field:NotNull(message = "isEnabled must not be null")
     var enabled: Boolean,
 )
 
-data class AdminUserListResponse(
+data class UpdateUserRoleRequest(
+    @field:NotBlank(message = "role must not be blank")
+    val role: String,
+)
+
+data class AdminUserDto(
     val id: String,
     val email: String,
     val firstName: String?,
@@ -32,9 +31,4 @@ data class AdminUserListResponse(
     val role: String,
     val isEnabled: Boolean,
     val createdDate: Instant?,
-)
-
-data class UpdateUserRoleRequest(
-    @field:NotBlank(message = "role must not be blank")
-    val role: String,
 )

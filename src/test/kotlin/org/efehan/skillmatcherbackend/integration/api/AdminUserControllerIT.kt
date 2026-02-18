@@ -1,10 +1,8 @@
 package org.efehan.skillmatcherbackend.integration.api
 
 import org.assertj.core.api.Assertions.assertThat
-import org.efehan.skillmatcherbackend.core.admin.CreateUserRequest
-import org.efehan.skillmatcherbackend.core.admin.UpdateUserRoleRequest
-import org.efehan.skillmatcherbackend.core.admin.UpdateUserStatusRequest
 import org.efehan.skillmatcherbackend.core.auth.JwtService
+import org.efehan.skillmatcherbackend.fixtures.requests.AdminUserFixtures
 import org.efehan.skillmatcherbackend.persistence.RoleModel
 import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.testcontainers.AbstractIntegrationTest
@@ -24,47 +22,23 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Autowired
     private lateinit var jwtService: JwtService
 
-    private fun createAdminAndGetToken(): String {
-        val role = roleRepository.save(RoleModel("ADMIN", null))
-        val admin =
-            UserModel(
-                email = "admin@firma.de",
-                passwordHash = passwordEncoder.encode("Admin-Password1!"),
-                firstName = "Admin",
-                lastName = "User",
-                role = role,
-            )
-        admin.isEnabled = true
-        userRepository.save(admin)
-        return jwtService.generateAccessToken(admin)
-    }
-
-    private fun createNonAdminAndGetToken(): String {
-        val role = roleRepository.save(RoleModel("EMPLOYER", null))
-        val user =
-            UserModel(
-                email = "employer@firma.de",
-                passwordHash = passwordEncoder.encode("User-Password1!"),
-                firstName = "Normal",
-                lastName = "User",
-                role = role,
-            )
-        user.isEnabled = true
-        userRepository.save(user)
-        return jwtService.generateAccessToken(user)
-    }
-
     @Test
     fun `should create user successfully as admin`() {
         // given
-        val token = createAdminAndGetToken()
-        roleRepository.save(RoleModel("EMPLOYER", null))
-
-        val request =
-            CreateUserRequest(
-                email = "max.mustermann@firma.de",
-                role = "EMPLOYER",
+        val role = roleRepository.save(RoleModel("ADMIN", null))
+        val admin =
+            userRepository.save(
+                UserModel(
+                    email = "admin@firma.de",
+                    passwordHash = passwordEncoder.encode("Admin-Password1!"),
+                    firstName = "Admin",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
             )
+        val token = jwtService.generateAccessToken(admin)
+        roleRepository.save(RoleModel("EMPLOYER", null))
+        val request = AdminUserFixtures.buildCreateUserRequest()
 
         // when & then
         mockMvc
@@ -82,13 +56,19 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 409 when email already exists`() {
         // given
-        val token = createAdminAndGetToken()
-
-        val request =
-            CreateUserRequest(
-                email = "admin@firma.de",
-                role = "ADMIN",
+        val role = roleRepository.save(RoleModel("ADMIN", null))
+        val admin =
+            userRepository.save(
+                UserModel(
+                    email = "admin@firma.de",
+                    passwordHash = passwordEncoder.encode("Admin-Password1!"),
+                    firstName = "Admin",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
             )
+        val token = jwtService.generateAccessToken(admin)
+        val request = AdminUserFixtures.buildCreateUserRequest(email = "admin@firma.de", role = "ADMIN")
 
         // when & then
         mockMvc
@@ -104,13 +84,19 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 404 when role does not exist`() {
         // given
-        val token = createAdminAndGetToken()
-
-        val request =
-            CreateUserRequest(
-                email = "max.mustermann@firma.de",
-                role = "NONEXISTENT",
+        val role = roleRepository.save(RoleModel("ADMIN", null))
+        val admin =
+            userRepository.save(
+                UserModel(
+                    email = "admin@firma.de",
+                    passwordHash = passwordEncoder.encode("Admin-Password1!"),
+                    firstName = "Admin",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
             )
+        val token = jwtService.generateAccessToken(admin)
+        val request = AdminUserFixtures.buildCreateUserRequest(role = "NONEXISTENT")
 
         // when & then
         mockMvc
@@ -126,13 +112,19 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 400 when request body is invalid`() {
         // given
-        val token = createAdminAndGetToken()
-
-        val request =
-            CreateUserRequest(
-                email = "not-an-email",
-                role = "",
+        val role = roleRepository.save(RoleModel("ADMIN", null))
+        val admin =
+            userRepository.save(
+                UserModel(
+                    email = "admin@firma.de",
+                    passwordHash = passwordEncoder.encode("Admin-Password1!"),
+                    firstName = "Admin",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
             )
+        val token = jwtService.generateAccessToken(admin)
+        val request = AdminUserFixtures.buildCreateUserRequest(email = "not-an-email", role = "")
 
         // when & then
         mockMvc
@@ -148,13 +140,19 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 403 when non-admin tries to create user`() {
         // given
-        val token = createNonAdminAndGetToken()
-
-        val request =
-            CreateUserRequest(
-                email = "max.mustermann@firma.de",
-                role = "EMPLOYER",
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "employer@firma.de",
+                    passwordHash = passwordEncoder.encode("User-Password1!"),
+                    firstName = "Normal",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
             )
+        val token = jwtService.generateAccessToken(user)
+        val request = AdminUserFixtures.buildCreateUserRequest()
 
         // when & then
         mockMvc
@@ -168,17 +166,10 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
 
     @Test
     fun `should return 401 when not authenticated for create user`() {
-        // given
-        val request =
-            CreateUserRequest(
-                email = "max.mustermann@firma.de",
-                role = "EMPLOYER",
-            )
-
         // when & then
         mockMvc
             .post("/api/admin/users") {
-                withBodyRequest(request)
+                withBodyRequest(AdminUserFixtures.buildCreateUserRequest())
             }.andExpect {
                 status { isUnauthorized() }
             }
@@ -187,18 +178,28 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return all users`() {
         // given
-        val token = createAdminAndGetToken()
+        val adminRole = roleRepository.save(RoleModel("ADMIN", null))
+        val admin =
+            userRepository.save(
+                UserModel(
+                    email = "admin@firma.de",
+                    passwordHash = passwordEncoder.encode("Admin-Password1!"),
+                    firstName = "Admin",
+                    lastName = "User",
+                    role = adminRole,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(admin)
         val employerRole = roleRepository.save(RoleModel("EMPLOYER", null))
-        val user =
+        userRepository.save(
             UserModel(
                 email = "max@firma.de",
                 passwordHash = passwordEncoder.encode("Test-Password1!"),
                 firstName = "Max",
                 lastName = "Mustermann",
                 role = employerRole,
-            )
-        user.isEnabled = true
-        userRepository.save(user)
+            ).apply { isEnabled = true },
+        )
 
         // when & then
         mockMvc
@@ -216,7 +217,18 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return only admin when no other users exist`() {
         // given
-        val token = createAdminAndGetToken()
+        val role = roleRepository.save(RoleModel("ADMIN", null))
+        val admin =
+            userRepository.save(
+                UserModel(
+                    email = "admin@firma.de",
+                    passwordHash = passwordEncoder.encode("Admin-Password1!"),
+                    firstName = "Admin",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(admin)
 
         // when & then
         mockMvc
@@ -231,7 +243,18 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 403 when non-admin tries to list users`() {
         // given
-        val token = createNonAdminAndGetToken()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "employer@firma.de",
+                    passwordHash = passwordEncoder.encode("User-Password1!"),
+                    firstName = "Normal",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
 
         // when & then
         mockMvc
@@ -255,20 +278,30 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should disable user successfully`() {
         // given
-        val token = createAdminAndGetToken()
+        val adminRole = roleRepository.save(RoleModel("ADMIN", null))
+        val admin =
+            userRepository.save(
+                UserModel(
+                    email = "admin@firma.de",
+                    passwordHash = passwordEncoder.encode("Admin-Password1!"),
+                    firstName = "Admin",
+                    lastName = "User",
+                    role = adminRole,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(admin)
         val employerRole = roleRepository.save(RoleModel("EMPLOYER", null))
         val user =
-            UserModel(
-                email = "max@firma.de",
-                passwordHash = passwordEncoder.encode("Test-Password1!"),
-                firstName = "Max",
-                lastName = "Mustermann",
-                role = employerRole,
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = employerRole,
+                ).apply { isEnabled = true },
             )
-        user.isEnabled = true
-        userRepository.save(user)
-
-        val request = UpdateUserStatusRequest(enabled = false)
+        val request = AdminUserFixtures.buildUpdateUserStatusRequest(enabled = false)
 
         // when & then
         mockMvc
@@ -286,20 +319,30 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should enable user successfully`() {
         // given
-        val token = createAdminAndGetToken()
+        val adminRole = roleRepository.save(RoleModel("ADMIN", null))
+        val admin =
+            userRepository.save(
+                UserModel(
+                    email = "admin@firma.de",
+                    passwordHash = passwordEncoder.encode("Admin-Password1!"),
+                    firstName = "Admin",
+                    lastName = "User",
+                    role = adminRole,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(admin)
         val employerRole = roleRepository.save(RoleModel("EMPLOYER", null))
         val user =
-            UserModel(
-                email = "max@firma.de",
-                passwordHash = passwordEncoder.encode("Test-Password1!"),
-                firstName = "Max",
-                lastName = "Mustermann",
-                role = employerRole,
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = employerRole,
+                ).apply { isEnabled = false },
             )
-        user.isEnabled = false
-        userRepository.save(user)
-
-        val request = UpdateUserStatusRequest(enabled = true)
+        val request = AdminUserFixtures.buildUpdateUserStatusRequest(enabled = true)
 
         // when & then
         mockMvc
@@ -317,8 +360,19 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 404 when updating status for nonexistent user`() {
         // given
-        val token = createAdminAndGetToken()
-        val request = UpdateUserStatusRequest(enabled = false)
+        val role = roleRepository.save(RoleModel("ADMIN", null))
+        val admin =
+            userRepository.save(
+                UserModel(
+                    email = "admin@firma.de",
+                    passwordHash = passwordEncoder.encode("Admin-Password1!"),
+                    firstName = "Admin",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(admin)
+        val request = AdminUserFixtures.buildUpdateUserStatusRequest()
 
         // when & then
         mockMvc
@@ -334,8 +388,19 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 403 when non-admin tries to update status`() {
         // given
-        val token = createNonAdminAndGetToken()
-        val request = UpdateUserStatusRequest(enabled = false)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "employer@firma.de",
+                    passwordHash = passwordEncoder.encode("User-Password1!"),
+                    firstName = "Normal",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
+        val request = AdminUserFixtures.buildUpdateUserStatusRequest()
 
         // when & then
         mockMvc
@@ -349,13 +414,10 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
 
     @Test
     fun `should return 401 when not authenticated for update status`() {
-        // given
-        val request = UpdateUserStatusRequest(enabled = false)
-
         // when & then
         mockMvc
             .patch("/api/admin/users/some-id/status") {
-                withBodyRequest(request)
+                withBodyRequest(AdminUserFixtures.buildUpdateUserStatusRequest())
             }.andExpect {
                 status { isUnauthorized() }
             }
@@ -364,21 +426,31 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should update role successfully`() {
         // given
-        val token = createAdminAndGetToken()
+        val adminRole = roleRepository.save(RoleModel("ADMIN", null))
+        val admin =
+            userRepository.save(
+                UserModel(
+                    email = "admin@firma.de",
+                    passwordHash = passwordEncoder.encode("Admin-Password1!"),
+                    firstName = "Admin",
+                    lastName = "User",
+                    role = adminRole,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(admin)
         val employerRole = roleRepository.save(RoleModel("EMPLOYER", null))
         roleRepository.save(RoleModel("PROJECTMANAGER", null))
         val user =
-            UserModel(
-                email = "max@firma.de",
-                passwordHash = passwordEncoder.encode("Test-Password1!"),
-                firstName = "Max",
-                lastName = "Mustermann",
-                role = employerRole,
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = employerRole,
+                ).apply { isEnabled = true },
             )
-        user.isEnabled = true
-        userRepository.save(user)
-
-        val request = UpdateUserRoleRequest(role = "PROJECTMANAGER")
+        val request = AdminUserFixtures.buildUpdateUserRoleRequest()
 
         // when & then
         mockMvc
@@ -396,8 +468,19 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 404 when updating role for nonexistent user`() {
         // given
-        val token = createAdminAndGetToken()
-        val request = UpdateUserRoleRequest(role = "ADMIN")
+        val role = roleRepository.save(RoleModel("ADMIN", null))
+        val admin =
+            userRepository.save(
+                UserModel(
+                    email = "admin@firma.de",
+                    passwordHash = passwordEncoder.encode("Admin-Password1!"),
+                    firstName = "Admin",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(admin)
+        val request = AdminUserFixtures.buildUpdateUserRoleRequest(role = "ADMIN")
 
         // when & then
         mockMvc
@@ -412,20 +495,30 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 404 when role not found`() {
         // given
-        val token = createAdminAndGetToken()
+        val adminRole = roleRepository.save(RoleModel("ADMIN", null))
+        val admin =
+            userRepository.save(
+                UserModel(
+                    email = "admin@firma.de",
+                    passwordHash = passwordEncoder.encode("Admin-Password1!"),
+                    firstName = "Admin",
+                    lastName = "User",
+                    role = adminRole,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(admin)
         val employerRole = roleRepository.save(RoleModel("EMPLOYER", null))
         val user =
-            UserModel(
-                email = "max@firma.de",
-                passwordHash = passwordEncoder.encode("Test-Password1!"),
-                firstName = "Max",
-                lastName = "Mustermann",
-                role = employerRole,
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = employerRole,
+                ).apply { isEnabled = true },
             )
-        user.isEnabled = true
-        userRepository.save(user)
-
-        val request = UpdateUserRoleRequest(role = "NONEXISTENT")
+        val request = AdminUserFixtures.buildUpdateUserRoleRequest(role = "NONEXISTENT")
 
         // when & then
         mockMvc
@@ -441,8 +534,19 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 400 when role is blank`() {
         // given
-        val token = createAdminAndGetToken()
-        val request = UpdateUserRoleRequest(role = "")
+        val role = roleRepository.save(RoleModel("ADMIN", null))
+        val admin =
+            userRepository.save(
+                UserModel(
+                    email = "admin@firma.de",
+                    passwordHash = passwordEncoder.encode("Admin-Password1!"),
+                    firstName = "Admin",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(admin)
+        val request = AdminUserFixtures.buildUpdateUserRoleRequest(role = "")
 
         // when & then
         mockMvc
@@ -458,8 +562,19 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 403 when non-admin tries to update role`() {
         // given
-        val token = createNonAdminAndGetToken()
-        val request = UpdateUserRoleRequest(role = "ADMIN")
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "employer@firma.de",
+                    passwordHash = passwordEncoder.encode("User-Password1!"),
+                    firstName = "Normal",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
+        val request = AdminUserFixtures.buildUpdateUserRoleRequest(role = "ADMIN")
 
         // when & then
         mockMvc
@@ -473,13 +588,10 @@ class AdminUserControllerIT : AbstractIntegrationTest() {
 
     @Test
     fun `should return 401 when not authenticated for update role`() {
-        // given
-        val request = UpdateUserRoleRequest(role = "ADMIN")
-
         // when & then
         mockMvc
             .patch("/api/admin/users/some-id/role") {
-                withBodyRequest(request)
+                withBodyRequest(AdminUserFixtures.buildUpdateUserRoleRequest(role = "ADMIN"))
             }.andExpect {
                 status { isUnauthorized() }
             }

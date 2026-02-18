@@ -1,6 +1,7 @@
 package org.efehan.skillmatcherbackend.service
 
 import io.mockk.every
+import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.just
@@ -10,17 +11,16 @@ import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.efehan.skillmatcherbackend.core.admin.AdminUserService
-import org.efehan.skillmatcherbackend.core.admin.CreateUserRequest
 import org.efehan.skillmatcherbackend.core.invitation.InvitationService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
+import org.efehan.skillmatcherbackend.fixtures.builder.RoleBuilder
+import org.efehan.skillmatcherbackend.fixtures.builder.UserBuilder
 import org.efehan.skillmatcherbackend.persistence.RefreshTokenRepository
-import org.efehan.skillmatcherbackend.persistence.RoleModel
 import org.efehan.skillmatcherbackend.persistence.RoleRepository
 import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.shared.exceptions.DuplicateEntryException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -41,35 +41,26 @@ class AdminUserServiceTest {
     @MockK
     private lateinit var refreshTokenRepository: RefreshTokenRepository
 
+    @InjectMockKs
     private lateinit var adminUserService: AdminUserService
-
-    @BeforeEach
-    fun setUp() {
-        adminUserService = AdminUserService(userRepository, roleRepository, invitationService, refreshTokenRepository)
-    }
 
     @Test
     fun `createUser successfully creates user and sends invitation`() {
         // given
-        val request =
-            CreateUserRequest(
-                email = "max.mustermann@firma.de",
-                role = "EMPLOYER",
-            )
-        val role = RoleModel("EMPLOYER", null)
+        val role = RoleBuilder().build(name = "EMPLOYER")
         val userSlot = slot<UserModel>()
 
-        every { userRepository.existsByEmail(request.email) } returns false
+        every { userRepository.existsByEmail("max.mustermann@firma.de") } returns false
         every { roleRepository.findByName("EMPLOYER") } returns role
         every { userRepository.save(capture(userSlot)) } returnsArgument 0
         every { invitationService.createAndSendInvitation(any()) } just runs
 
         // when
-        val result = adminUserService.createUser(request)
+        val result = adminUserService.createUser("max.mustermann@firma.de", "EMPLOYER")
 
         // then
         assertThat(result.email).isEqualTo("max.mustermann@firma.de")
-        assertThat(result.role).isEqualTo("EMPLOYER")
+        assertThat(result.role).isEqualTo(role)
 
         val savedUser = userSlot.captured
         assertThat(savedUser.isEnabled).isFalse()
@@ -83,17 +74,11 @@ class AdminUserServiceTest {
     @Test
     fun `createUser throws DuplicateEntryException when email already exists`() {
         // given
-        val request =
-            CreateUserRequest(
-                email = "max.mustermann@firma.de",
-                role = "EMPLOYER",
-            )
-
-        every { userRepository.existsByEmail(request.email) } returns true
+        every { userRepository.existsByEmail("max.mustermann@firma.de") } returns true
 
         // then
         assertThatThrownBy {
-            adminUserService.createUser(request)
+            adminUserService.createUser("max.mustermann@firma.de", "EMPLOYER")
         }.isInstanceOf(DuplicateEntryException::class.java)
             .satisfies({ ex ->
                 val e = ex as DuplicateEntryException
@@ -106,18 +91,12 @@ class AdminUserServiceTest {
     @Test
     fun `createUser throws EntryNotFoundException when role does not exist`() {
         // given
-        val request =
-            CreateUserRequest(
-                email = "max.mustermann@firma.de",
-                role = "INVALID_ROLE",
-            )
-
-        every { userRepository.existsByEmail(request.email) } returns false
+        every { userRepository.existsByEmail("max.mustermann@firma.de") } returns false
         every { roleRepository.findByName("INVALID_ROLE") } returns null
 
         // then
         assertThatThrownBy {
-            adminUserService.createUser(request)
+            adminUserService.createUser("max.mustermann@firma.de", "INVALID_ROLE")
         }.isInstanceOf(EntryNotFoundException::class.java)
             .satisfies({ ex ->
                 val e = ex as EntryNotFoundException
@@ -130,39 +109,25 @@ class AdminUserServiceTest {
     @Test
     fun `createUser converts role to uppercase`() {
         // given
-        val request =
-            CreateUserRequest(
-                email = "max.mustermann@firma.de",
-                role = "employer",
-            )
-        val role = RoleModel("EMPLOYER", null)
+        val role = RoleBuilder().build(name = "EMPLOYER")
 
-        every { userRepository.existsByEmail(request.email) } returns false
+        every { userRepository.existsByEmail("max.mustermann@firma.de") } returns false
         every { roleRepository.findByName("EMPLOYER") } returns role
         every { userRepository.save(any()) } returnsArgument 0
         every { invitationService.createAndSendInvitation(any()) } just runs
 
         // when
-        val result = adminUserService.createUser(request)
+        val result = adminUserService.createUser("max.mustermann@firma.de", "employer")
 
         // then
-        assertThat(result.role).isEqualTo("EMPLOYER")
+        assertThat(result.role.name).isEqualTo("EMPLOYER")
         verify { roleRepository.findByName("EMPLOYER") }
     }
 
     @Test
     fun `updateUserStatus disables user and revokes refresh tokens`() {
         // given
-        val role = RoleModel("EMPLOYER", null)
-        val user =
-            UserModel(
-                email = "max@firma.de",
-                passwordHash = "hashed",
-                firstName = "Max",
-                lastName = "Mustermann",
-                role = role,
-            )
-        user.isEnabled = true
+        val user = UserBuilder().build(email = "max@firma.de", role = RoleBuilder().build(name = "EMPLOYER"))
 
         every { userRepository.findById(user.id) } returns Optional.of(user)
         every { userRepository.save(any()) } returnsArgument 0
@@ -180,16 +145,7 @@ class AdminUserServiceTest {
     @Test
     fun `updateUserStatus enables user without revoking refresh tokens`() {
         // given
-        val role = RoleModel("EMPLOYER", null)
-        val user =
-            UserModel(
-                email = "max@firma.de",
-                passwordHash = "hashed",
-                firstName = "Max",
-                lastName = "Mustermann",
-                role = role,
-            )
-        user.isEnabled = false
+        val user = UserBuilder().build(email = "max@firma.de", isEnabled = false, role = RoleBuilder().build(name = "EMPLOYER"))
 
         every { userRepository.findById(user.id) } returns Optional.of(user)
         every { userRepository.save(any()) } returnsArgument 0
@@ -217,29 +173,10 @@ class AdminUserServiceTest {
     }
 
     @Test
-    fun `listUsers returns all users mapped to response`() {
+    fun `listUsers returns all users`() {
         // given
-        val role1 = RoleModel("EMPLOYER", null)
-        val user1 =
-            UserModel(
-                email = "max@firma.de",
-                passwordHash = "hashed",
-                firstName = "Max",
-                lastName = "Mustermann",
-                role = role1,
-            )
-        user1.isEnabled = true
-
-        val role2 = RoleModel("ADMIN", null)
-        val user2 =
-            UserModel(
-                email = "admin@firma.de",
-                passwordHash = "hashed",
-                firstName = "Admin",
-                lastName = "User",
-                role = role2,
-            )
-        user2.isEnabled = false
+        val user1 = UserBuilder().build(email = "max@firma.de", role = RoleBuilder().build(name = "EMPLOYER"))
+        val user2 = UserBuilder().build(email = "admin@firma.de", isEnabled = false, role = RoleBuilder().build(name = "ADMIN"))
 
         every { userRepository.findAll() } returns listOf(user1, user2)
 
@@ -249,10 +186,10 @@ class AdminUserServiceTest {
         // then
         assertThat(result).hasSize(2)
         assertThat(result[0].email).isEqualTo("max@firma.de")
-        assertThat(result[0].role).isEqualTo("EMPLOYER")
+        assertThat(result[0].role.name).isEqualTo("EMPLOYER")
         assertThat(result[0].isEnabled).isTrue()
         assertThat(result[1].email).isEqualTo("admin@firma.de")
-        assertThat(result[1].role).isEqualTo("ADMIN")
+        assertThat(result[1].role.name).isEqualTo("ADMIN")
         assertThat(result[1].isEnabled).isFalse()
     }
 
@@ -271,17 +208,8 @@ class AdminUserServiceTest {
     @Test
     fun `updateUserRole updates role and revokes refresh tokens`() {
         // given
-        val oldRole = RoleModel("EMPLOYER", null)
-        val user =
-            UserModel(
-                email = "max@firma.de",
-                passwordHash = "hashed",
-                firstName = "Max",
-                lastName = "Mustermann",
-                role = oldRole,
-            )
-        user.isEnabled = true
-        val newRole = RoleModel("ADMIN", null)
+        val user = UserBuilder().build(email = "max@firma.de", role = RoleBuilder().build(name = "EMPLOYER"))
+        val newRole = RoleBuilder().build(name = "ADMIN")
 
         every { userRepository.findById(user.id) } returns Optional.of(user)
         every { roleRepository.findByName("ADMIN") } returns newRole
@@ -300,17 +228,8 @@ class AdminUserServiceTest {
     @Test
     fun `updateUserRole converts role name to uppercase`() {
         // given
-        val role = RoleModel("EMPLOYER", null)
-        val user =
-            UserModel(
-                email = "max@firma.de",
-                passwordHash = "hashed",
-                firstName = "Max",
-                lastName = "Mustermann",
-                role = role,
-            )
-        user.isEnabled = true
-        val newRole = RoleModel("ADMIN", null)
+        val user = UserBuilder().build(email = "max@firma.de", role = RoleBuilder().build(name = "EMPLOYER"))
+        val newRole = RoleBuilder().build(name = "ADMIN")
 
         every { userRepository.findById(user.id) } returns Optional.of(user)
         every { roleRepository.findByName("ADMIN") } returns newRole
@@ -340,16 +259,7 @@ class AdminUserServiceTest {
     @Test
     fun `updateUserRole throws EntryNotFoundException when role not found`() {
         // given
-        val role = RoleModel("EMPLOYER", null)
-        val user =
-            UserModel(
-                email = "max@firma.de",
-                passwordHash = "hashed",
-                firstName = "Max",
-                lastName = "Mustermann",
-                role = role,
-            )
-        user.isEnabled = true
+        val user = UserBuilder().build(email = "max@firma.de", role = RoleBuilder().build(name = "EMPLOYER"))
 
         every { userRepository.findById(user.id) } returns Optional.of(user)
         every { roleRepository.findByName("NONEXISTENT") } returns null
