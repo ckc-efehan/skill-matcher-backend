@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-5.0.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+
+    <changeSet id="chat-idx-messages-conversation-sentat" author="efehan">
+        <createIndex tableName="chat_messages" indexName="idx_chat_messages_conversation_sent_at">
+            <column name="conversation_id"/>
+            <column name="sent_at" descending="true"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="chat-idx-conversations-user-one" author="efehan">
+        <createIndex tableName="conversations" indexName="idx_conversations_user_one">
+            <column name="user_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="chat-idx-conversations-user-two" author="efehan">
+        <createIndex tableName="conversations" indexName="idx_conversations_user_two">
+            <column name="user_two_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="chat-uq-conversations-user-pair" author="efehan">
+        <addUniqueConstraint tableName="conversations"
+                             columnNames="user_id, user_two_id"
+                             constraintName="uq_conversations_user_pair"/>
+    </changeSet>
+
+</databaseChangeLog>
