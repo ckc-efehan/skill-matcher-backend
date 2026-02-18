@@ -11,7 +11,6 @@ import jakarta.validation.Valid
 import org.efehan.skillmatcherbackend.core.auth.SecurityUser
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCodeResponse
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -19,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -112,14 +112,12 @@ class ProjectMemberController(
         ],
     )
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     fun addMember(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @PathVariable projectId: String,
         @Valid @RequestBody request: AddProjectMemberRequest,
-    ): ResponseEntity<ProjectMemberDto> =
-        ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(service.addMember(securityUser.user, projectId, request))
+    ): ProjectMemberDto = service.addMember(securityUser.user, projectId, request.userId).toDto()
 
     @Operation(
         summary = "List active members of a project",
@@ -151,9 +149,10 @@ class ProjectMemberController(
         ],
     )
     @GetMapping
+    @ResponseStatus(HttpStatus.OK)
     fun getMembers(
         @PathVariable projectId: String,
-    ): ResponseEntity<List<ProjectMemberDto>> = ResponseEntity.ok(service.getMembers(projectId))
+    ): List<ProjectMemberDto> = service.getMembers(projectId).map { it.toDto() }
 
     @Operation(
         summary = "Remove a member from a project",
@@ -195,13 +194,13 @@ class ProjectMemberController(
         ],
     )
     @DeleteMapping("/{userId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun removeMember(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @PathVariable projectId: String,
         @PathVariable userId: String,
-    ): ResponseEntity<Void> {
+    ) {
         service.removeMember(securityUser.user, projectId, userId)
-        return ResponseEntity.noContent().build()
     }
 
     @Operation(
@@ -234,11 +233,11 @@ class ProjectMemberController(
         ],
     )
     @PostMapping("/leave")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun leaveProject(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @PathVariable projectId: String,
-    ): ResponseEntity<Void> {
+    ) {
         service.leaveProject(securityUser.user, projectId)
-        return ResponseEntity.noContent().build()
     }
 }

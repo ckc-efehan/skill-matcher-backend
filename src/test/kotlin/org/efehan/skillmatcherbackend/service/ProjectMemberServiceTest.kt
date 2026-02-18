@@ -1,33 +1,30 @@
 package org.efehan.skillmatcherbackend.service
 
 import io.mockk.every
+import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.slot
 import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.efehan.skillmatcherbackend.core.projectmember.AddProjectMemberRequest
 import org.efehan.skillmatcherbackend.core.projectmember.ProjectMemberService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
+import org.efehan.skillmatcherbackend.fixtures.builder.ProjectBuilder
+import org.efehan.skillmatcherbackend.fixtures.builder.ProjectMemberBuilder
+import org.efehan.skillmatcherbackend.fixtures.builder.RoleBuilder
+import org.efehan.skillmatcherbackend.fixtures.builder.UserBuilder
 import org.efehan.skillmatcherbackend.persistence.ProjectMemberModel
 import org.efehan.skillmatcherbackend.persistence.ProjectMemberRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectMemberStatus
-import org.efehan.skillmatcherbackend.persistence.ProjectModel
 import org.efehan.skillmatcherbackend.persistence.ProjectRepository
-import org.efehan.skillmatcherbackend.persistence.ProjectStatus
-import org.efehan.skillmatcherbackend.persistence.RoleModel
-import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
 import org.efehan.skillmatcherbackend.shared.exceptions.DuplicateEntryException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import java.time.Instant
-import java.time.LocalDate
 import java.util.Optional
 
 @ExtendWith(MockKExtension::class)
@@ -42,50 +39,21 @@ class ProjectMemberServiceTest {
     @MockK
     private lateinit var memberRepo: ProjectMemberRepository
 
+    @InjectMockKs
     private lateinit var service: ProjectMemberService
-
-    private val role = RoleModel("PROJECTMANAGER", null)
-
-    private val owner =
-        UserModel(
-            email = "owner@firma.de",
-            passwordHash = "hashed",
-            firstName = "Owner",
-            lastName = "User",
-            role = role,
-        ).apply { isEnabled = true }
-
-    private val member =
-        UserModel(
-            email = "member@firma.de",
-            passwordHash = "hashed",
-            firstName = "Member",
-            lastName = "User",
-            role = RoleModel("EMPLOYER", null),
-        ).apply { isEnabled = true }
-
-    private val project =
-        ProjectModel(
-            name = "Test Project",
-            description = "A test project",
-            owner = owner,
-            status = ProjectStatus.PLANNED,
-            startDate = LocalDate.of(2026, 3, 1),
-            endDate = LocalDate.of(2026, 12, 31),
-            maxMembers = 5,
-        )
-
-    @BeforeEach
-    fun setUp() {
-        service = ProjectMemberService(projectRepo, userRepo, memberRepo)
-    }
-
-    // ── addMember ────────────────────────────────────────────────────────
 
     @Test
     fun `addMember saves and returns new member`() {
         // given
-        val request = AddProjectMemberRequest(userId = member.id)
+        val owner = UserBuilder().build(email = "owner@firma.de", firstName = "Owner", lastName = "User")
+        val member =
+            UserBuilder().build(
+                email = "member@firma.de",
+                firstName = "Member",
+                lastName = "User",
+                role = RoleBuilder().build(name = "EMPLOYER"),
+            )
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { userRepo.findById(member.id) } returns Optional.of(member)
         every { memberRepo.findByProjectAndUser(project, member) } returns null
@@ -93,23 +61,32 @@ class ProjectMemberServiceTest {
         every { memberRepo.save(any()) } returnsArgument 0
 
         // when
-        val result = service.addMember(owner, project.id, request)
+        val result = service.addMember(owner, project.id, member.id)
 
         // then
-        assertThat(result.userId).isEqualTo(member.id)
-        assertThat(result.status).isEqualTo("ACTIVE")
-        assertThat(result.userName).isEqualTo("Member User")
+        assertThat(result.user.id).isEqualTo(member.id)
+        assertThat(result.status).isEqualTo(ProjectMemberStatus.ACTIVE)
+        assertThat(result.user.firstName).isEqualTo(member.firstName)
+        assertThat(result.user.lastName).isEqualTo(member.lastName)
         verify(exactly = 1) { memberRepo.save(any()) }
     }
 
     @Test
     fun `addMember throws AccessDeniedException when caller is not owner`() {
         // given
-        val request = AddProjectMemberRequest(userId = member.id)
+        val owner = UserBuilder().build(email = "owner@firma.de", firstName = "Owner", lastName = "User")
+        val member =
+            UserBuilder().build(
+                email = "member@firma.de",
+                firstName = "Member",
+                lastName = "User",
+                role = RoleBuilder().build(name = "EMPLOYER"),
+            )
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
 
         // then
-        assertThatThrownBy { service.addMember(member, project.id, request) }
+        assertThatThrownBy { service.addMember(member, project.id, member.id) }
             .isInstanceOf(AccessDeniedException::class.java)
             .satisfies({ ex ->
                 val e = ex as AccessDeniedException
@@ -120,11 +97,12 @@ class ProjectMemberServiceTest {
     @Test
     fun `addMember throws EntryNotFoundException when project not found`() {
         // given
-        val request = AddProjectMemberRequest(userId = member.id)
+        val owner = UserBuilder().build()
+        val member = UserBuilder().build(email = "member@firma.de")
         every { projectRepo.findById("nonexistent") } returns Optional.empty()
 
         // then
-        assertThatThrownBy { service.addMember(owner, "nonexistent", request) }
+        assertThatThrownBy { service.addMember(owner, "nonexistent", member.id) }
             .isInstanceOf(EntryNotFoundException::class.java)
             .satisfies({ ex ->
                 val e = ex as EntryNotFoundException
@@ -135,12 +113,13 @@ class ProjectMemberServiceTest {
     @Test
     fun `addMember throws EntryNotFoundException when user not found`() {
         // given
-        val request = AddProjectMemberRequest(userId = "nonexistent")
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { userRepo.findById("nonexistent") } returns Optional.empty()
 
         // then
-        assertThatThrownBy { service.addMember(owner, project.id, request) }
+        assertThatThrownBy { service.addMember(owner, project.id, "nonexistent") }
             .isInstanceOf(EntryNotFoundException::class.java)
             .satisfies({ ex ->
                 val e = ex as EntryNotFoundException
@@ -151,20 +130,16 @@ class ProjectMemberServiceTest {
     @Test
     fun `addMember throws DuplicateEntryException when user is already active member`() {
         // given
-        val request = AddProjectMemberRequest(userId = member.id)
-        val existingMember =
-            ProjectMemberModel(
-                project = project,
-                user = member,
-                status = ProjectMemberStatus.ACTIVE,
-                joinedDate = Instant.now(),
-            )
+        val owner = UserBuilder().build(email = "owner@firma.de")
+        val member = UserBuilder().build(email = "member@firma.de")
+        val project = ProjectBuilder().build(owner = owner)
+        val existingMember = ProjectMemberBuilder().build(project = project, user = member)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { userRepo.findById(member.id) } returns Optional.of(member)
         every { memberRepo.findByProjectAndUser(project, member) } returns existingMember
 
         // then
-        assertThatThrownBy { service.addMember(owner, project.id, request) }
+        assertThatThrownBy { service.addMember(owner, project.id, member.id) }
             .isInstanceOf(DuplicateEntryException::class.java)
             .satisfies({ ex ->
                 val e = ex as DuplicateEntryException
@@ -175,14 +150,10 @@ class ProjectMemberServiceTest {
     @Test
     fun `addMember reactivates LEFT member`() {
         // given
-        val request = AddProjectMemberRequest(userId = member.id)
-        val leftMember =
-            ProjectMemberModel(
-                project = project,
-                user = member,
-                status = ProjectMemberStatus.LEFT,
-                joinedDate = Instant.now(),
-            )
+        val owner = UserBuilder().build(email = "owner@firma.de")
+        val member = UserBuilder().build(email = "member@firma.de")
+        val project = ProjectBuilder().build(owner = owner)
+        val leftMember = ProjectMemberBuilder().build(project = project, user = member, status = ProjectMemberStatus.LEFT)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { userRepo.findById(member.id) } returns Optional.of(member)
         every { memberRepo.findByProjectAndUser(project, member) } returns leftMember
@@ -191,34 +162,26 @@ class ProjectMemberServiceTest {
         every { memberRepo.save(capture(savedSlot)) } returnsArgument 0
 
         // when
-        val result = service.addMember(owner, project.id, request)
+        val result = service.addMember(owner, project.id, member.id)
 
         // then
-        assertThat(result.status).isEqualTo("ACTIVE")
+        assertThat(result.status).isEqualTo(ProjectMemberStatus.ACTIVE)
         assertThat(savedSlot.captured.status).isEqualTo(ProjectMemberStatus.ACTIVE)
     }
 
     @Test
     fun `addMember throws when project is full`() {
         // given
-        val fullProject =
-            ProjectModel(
-                name = "Full Project",
-                description = "Full",
-                owner = owner,
-                status = ProjectStatus.PLANNED,
-                startDate = LocalDate.of(2026, 3, 1),
-                endDate = LocalDate.of(2026, 12, 31),
-                maxMembers = 2,
-            )
-        val request = AddProjectMemberRequest(userId = member.id)
+        val owner = UserBuilder().build(email = "owner@firma.de")
+        val member = UserBuilder().build(email = "member@firma.de")
+        val fullProject = ProjectBuilder().build(name = "Full Project", description = "Full", maxMembers = 2, owner = owner)
         every { projectRepo.findById(fullProject.id) } returns Optional.of(fullProject)
         every { userRepo.findById(member.id) } returns Optional.of(member)
         every { memberRepo.findByProjectAndUser(fullProject, member) } returns null
         every { memberRepo.countByProjectAndStatus(fullProject, ProjectMemberStatus.ACTIVE) } returns 2
 
         // then
-        assertThatThrownBy { service.addMember(owner, fullProject.id, request) }
+        assertThatThrownBy { service.addMember(owner, fullProject.id, member.id) }
             .isInstanceOf(DuplicateEntryException::class.java)
             .satisfies({ ex ->
                 val e = ex as DuplicateEntryException
@@ -226,25 +189,14 @@ class ProjectMemberServiceTest {
             })
     }
 
-    // ── getMembers ───────────────────────────────────────────────────────
-
     @Test
     fun `getMembers returns only active members`() {
         // given
-        val activeMember =
-            ProjectMemberModel(
-                project = project,
-                user = member,
-                status = ProjectMemberStatus.ACTIVE,
-                joinedDate = Instant.now(),
-            )
-        val leftMember =
-            ProjectMemberModel(
-                project = project,
-                user = owner,
-                status = ProjectMemberStatus.LEFT,
-                joinedDate = Instant.now(),
-            )
+        val owner = UserBuilder().build(email = "owner@firma.de")
+        val member = UserBuilder().build(email = "member@firma.de")
+        val project = ProjectBuilder().build(owner = owner)
+        val activeMember = ProjectMemberBuilder().build(project = project, user = member)
+        val leftMember = ProjectMemberBuilder().build(project = project, user = owner, status = ProjectMemberStatus.LEFT)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { memberRepo.findByProject(project) } returns listOf(activeMember, leftMember)
 
@@ -253,7 +205,7 @@ class ProjectMemberServiceTest {
 
         // then
         assertThat(result).hasSize(1)
-        assertThat(result[0].userId).isEqualTo(member.id)
+        assertThat(result[0].user.id).isEqualTo(member.id)
     }
 
     @Test
@@ -266,18 +218,13 @@ class ProjectMemberServiceTest {
             .isInstanceOf(EntryNotFoundException::class.java)
     }
 
-    // ── removeMember ─────────────────────────────────────────────────────
-
     @Test
     fun `removeMember sets status to LEFT`() {
         // given
-        val activeMember =
-            ProjectMemberModel(
-                project = project,
-                user = member,
-                status = ProjectMemberStatus.ACTIVE,
-                joinedDate = Instant.now(),
-            )
+        val owner = UserBuilder().build(email = "owner@firma.de")
+        val member = UserBuilder().build(email = "member@firma.de")
+        val project = ProjectBuilder().build(owner = owner)
+        val activeMember = ProjectMemberBuilder().build(project = project, user = member)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { userRepo.findById(member.id) } returns Optional.of(member)
         every { memberRepo.findByProjectAndUser(project, member) } returns activeMember
@@ -295,6 +242,9 @@ class ProjectMemberServiceTest {
     @Test
     fun `removeMember throws AccessDeniedException when caller is not owner`() {
         // given
+        val owner = UserBuilder().build(email = "owner@firma.de")
+        val member = UserBuilder().build(email = "member@firma.de")
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
 
         // then
@@ -305,6 +255,9 @@ class ProjectMemberServiceTest {
     @Test
     fun `removeMember throws EntryNotFoundException when member not found`() {
         // given
+        val owner = UserBuilder().build(email = "owner@firma.de")
+        val member = UserBuilder().build(email = "member@firma.de")
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { userRepo.findById(member.id) } returns Optional.of(member)
         every { memberRepo.findByProjectAndUser(project, member) } returns null
@@ -318,18 +271,13 @@ class ProjectMemberServiceTest {
             })
     }
 
-    // ── leaveProject ─────────────────────────────────────────────────────
-
     @Test
     fun `leaveProject sets own membership to LEFT`() {
         // given
-        val activeMember =
-            ProjectMemberModel(
-                project = project,
-                user = member,
-                status = ProjectMemberStatus.ACTIVE,
-                joinedDate = Instant.now(),
-            )
+        val owner = UserBuilder().build(email = "owner@firma.de")
+        val member = UserBuilder().build(email = "member@firma.de")
+        val project = ProjectBuilder().build(owner = owner)
+        val activeMember = ProjectMemberBuilder().build(project = project, user = member)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { memberRepo.findByProjectAndUser(project, member) } returns activeMember
 
@@ -346,6 +294,9 @@ class ProjectMemberServiceTest {
     @Test
     fun `leaveProject throws EntryNotFoundException when not a member`() {
         // given
+        val owner = UserBuilder().build(email = "owner@firma.de")
+        val member = UserBuilder().build(email = "member@firma.de")
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { memberRepo.findByProjectAndUser(project, member) } returns null
 

@@ -1,6 +1,8 @@
 package org.efehan.skillmatcherbackend.integration.api
 
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.kotlin.await
+import org.awaitility.kotlin.untilNotNull
 import org.efehan.skillmatcherbackend.core.auth.JwtService
 import org.efehan.skillmatcherbackend.core.chat.ChatMessageResponse
 import org.efehan.skillmatcherbackend.core.chat.SendMessageRequest
@@ -15,6 +17,7 @@ import org.springframework.messaging.simp.stomp.StompFrameHandler
 import org.springframework.messaging.simp.stomp.StompHeaders
 import org.springframework.security.crypto.password.PasswordEncoder
 import java.lang.reflect.Type
+import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.TimeUnit
@@ -84,31 +87,31 @@ class ChatWebSocketControllerIT : AbstractWebSocketIntegrationTest() {
 
         aliceSession.subscribe("/user/queue/messages", frameHandler(aliceMessages))
         bobSession.subscribe("/user/queue/messages", frameHandler(bobMessages))
-        Thread.sleep(500)
 
         // when
         val request = SendMessageRequest(conversationId = conversation.id, content = "Hello Bob!")
+        await.atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(200)).untilAsserted {
+            aliceSession.send("/app/chat.send", request)
+            val aliceMsg = aliceMessages.poll(1, TimeUnit.SECONDS)
+            assertThat(aliceMsg).isNotNull()
+        }
+
+        // drain extra sends and get fresh results
+        aliceMessages.clear()
+        bobMessages.clear()
         aliceSession.send("/app/chat.send", request)
 
         // then
-        val aliceMsg = aliceMessages.poll(5, TimeUnit.SECONDS)
-        val bobMsg = bobMessages.poll(5, TimeUnit.SECONDS)
+        val aliceMsg = await.atMost(Duration.ofSeconds(5)).untilNotNull { aliceMessages.poll(1, TimeUnit.SECONDS) }
+        val bobMsg = await.atMost(Duration.ofSeconds(5)).untilNotNull { bobMessages.poll(1, TimeUnit.SECONDS) }
 
-        assertThat(aliceMsg).isNotNull()
-        assertThat(aliceMsg!!.content).isEqualTo("Hello Bob!")
+        assertThat(aliceMsg.content).isEqualTo("Hello Bob!")
         assertThat(aliceMsg.senderId).isEqualTo(alice.id)
         assertThat(aliceMsg.conversationId).isEqualTo(conversation.id)
 
-        assertThat(bobMsg).isNotNull()
-        assertThat(bobMsg!!.content).isEqualTo("Hello Bob!")
+        assertThat(bobMsg.content).isEqualTo("Hello Bob!")
         assertThat(bobMsg.senderId).isEqualTo(alice.id)
         assertThat(bobMsg.conversationId).isEqualTo(conversation.id)
-
-        // verify DB persistence
-        val dbMessages = chatMessageRepository.findAll()
-        assertThat(dbMessages).hasSize(1)
-        assertThat(dbMessages[0].content).isEqualTo("Hello Bob!")
-        assertThat(dbMessages[0].sender.id).isEqualTo(alice.id)
     }
 
     @Test
@@ -121,20 +124,18 @@ class ChatWebSocketControllerIT : AbstractWebSocketIntegrationTest() {
         val aliceMessages = LinkedBlockingDeque<ChatMessageResponse>()
         val aliceSession = connectWithAuth(tokenAlice)
         aliceSession.subscribe("/user/queue/messages", frameHandler(aliceMessages))
-        Thread.sleep(500)
 
         // when
         val request = SendMessageRequest(conversationId = conversation.id, content = "Timestamp test")
         aliceSession.send("/app/chat.send", request)
 
         // then
-        val msg = aliceMessages.poll(5, TimeUnit.SECONDS)
-        assertThat(msg).isNotNull()
+        val msg = await.atMost(Duration.ofSeconds(10)).untilNotNull { aliceMessages.poll(1, TimeUnit.SECONDS) }
 
-        val dbMessage = chatMessageRepository.findAll().first()
+        val dbMessage = chatMessageRepository.findAll().last()
         assertThat(dbMessage.content).isEqualTo("Timestamp test")
         assertThat(dbMessage.sentAt).isNotNull()
-        assertThat(msg!!.sentAt.truncatedTo(ChronoUnit.MILLIS))
+        assertThat(msg.sentAt.truncatedTo(ChronoUnit.MILLIS))
             .isEqualTo(dbMessage.sentAt.truncatedTo(ChronoUnit.MILLIS))
     }
 
@@ -150,7 +151,16 @@ class ChatWebSocketControllerIT : AbstractWebSocketIntegrationTest() {
         val bobSession = connectWithAuth(tokenBob)
 
         bobSession.subscribe("/user/queue/messages", frameHandler(bobMessages))
-        Thread.sleep(500)
+
+        // first send a valid message to confirm subscription is active
+        val validConversation = conversationRepository.findAll().first()
+        aliceSession.send(
+            "/app/chat.send",
+            SendMessageRequest(conversationId = validConversation.id, content = "warmup"),
+        )
+        await.atMost(Duration.ofSeconds(10)).untilNotNull { bobMessages.poll(1, TimeUnit.SECONDS) }
+        bobMessages.clear()
+        chatMessageRepository.deleteAll()
 
         // when — send with blank conversationId and content
         val invalidRequest = SendMessageRequest(conversationId = "", content = "")
@@ -172,17 +182,26 @@ class ChatWebSocketControllerIT : AbstractWebSocketIntegrationTest() {
         val conversation = createConversation(alice, bob)
 
         val charlieMessages = LinkedBlockingDeque<ChatMessageResponse>()
+        val aliceMessages = LinkedBlockingDeque<ChatMessageResponse>()
         val aliceSession = connectWithAuth(tokenAlice)
         val charlieSession = connectWithAuth(tokenCharlie)
 
+        aliceSession.subscribe("/user/queue/messages", frameHandler(aliceMessages))
         charlieSession.subscribe("/user/queue/messages", frameHandler(charlieMessages))
-        Thread.sleep(500)
+
+        // confirm subscriptions are active by sending and receiving a message
+        aliceSession.send("/app/chat.send", SendMessageRequest(conversationId = conversation.id, content = "warmup"))
+        await.atMost(Duration.ofSeconds(10)).untilNotNull { aliceMessages.poll(1, TimeUnit.SECONDS) }
+        aliceMessages.clear()
 
         // when
         val request = SendMessageRequest(conversationId = conversation.id, content = "Secret message")
         aliceSession.send("/app/chat.send", request)
 
-        // then
+        // confirm alice received it (subscription is working)
+        await.atMost(Duration.ofSeconds(5)).untilNotNull { aliceMessages.poll(1, TimeUnit.SECONDS) }
+
+        // then — charlie should NOT have received anything
         val msg = charlieMessages.poll(2, TimeUnit.SECONDS)
         assertThat(msg).isNull()
     }

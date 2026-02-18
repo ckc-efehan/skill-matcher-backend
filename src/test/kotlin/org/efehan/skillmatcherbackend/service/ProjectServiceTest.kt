@@ -1,6 +1,7 @@
 package org.efehan.skillmatcherbackend.service
 
 import io.mockk.every
+import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
@@ -9,12 +10,10 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.efehan.skillmatcherbackend.core.project.ProjectService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
 import org.efehan.skillmatcherbackend.fixtures.builder.ProjectBuilder
-import org.efehan.skillmatcherbackend.fixtures.builder.RoleBuilder
+import org.efehan.skillmatcherbackend.fixtures.builder.ProjectMemberBuilder
 import org.efehan.skillmatcherbackend.fixtures.builder.SkillBuilder
 import org.efehan.skillmatcherbackend.fixtures.builder.UserBuilder
-import org.efehan.skillmatcherbackend.persistence.ProjectMemberModel
 import org.efehan.skillmatcherbackend.persistence.ProjectMemberRepository
-import org.efehan.skillmatcherbackend.persistence.ProjectMemberStatus
 import org.efehan.skillmatcherbackend.persistence.ProjectModel
 import org.efehan.skillmatcherbackend.persistence.ProjectRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectSkillModel
@@ -22,11 +21,9 @@ import org.efehan.skillmatcherbackend.persistence.ProjectSkillRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectStatus
 import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import java.time.Instant
 import java.util.Optional
 
 @ExtendWith(MockKExtension::class)
@@ -41,20 +38,13 @@ class ProjectServiceTest {
     @MockK
     private lateinit var projectMemberRepo: ProjectMemberRepository
 
+    @InjectMockKs
     private lateinit var projectService: ProjectService
-
-    private val role = RoleBuilder().build()
-    private val owner = UserBuilder().build(role = role)
-    private val otherUser = UserBuilder().build(email = "other@firma.de", firstName = "Other", lastName = "User", role = role)
-
-    @BeforeEach
-    fun setUp() {
-        projectService = ProjectService(projectRepo, projectSkillRepo, projectMemberRepo)
-    }
 
     @Test
     fun `createProject saves and returns project with status PLANNED`() {
         // given
+        val owner = UserBuilder().build()
         val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.save(any()) } returnsArgument 0
 
@@ -83,6 +73,7 @@ class ProjectServiceTest {
     @Test
     fun `getProject returns project when found`() {
         // given
+        val owner = UserBuilder().build()
         val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
 
@@ -112,6 +103,7 @@ class ProjectServiceTest {
     @Test
     fun `getAllProjects returns all projects`() {
         // given
+        val owner = UserBuilder().build()
         val project1 = ProjectBuilder().build(owner = owner)
         val project2 = ProjectBuilder().build(owner = owner, name = "Another Project")
         every { projectRepo.findAll() } returns listOf(project1, project2)
@@ -140,6 +132,7 @@ class ProjectServiceTest {
     @Test
     fun `updateProject updates and returns project when owner`() {
         // given
+        val owner = UserBuilder().build()
         val project = ProjectBuilder().build(owner = owner)
         val updated =
             ProjectBuilder().build(
@@ -180,6 +173,7 @@ class ProjectServiceTest {
     @Test
     fun `updateProject throws EntryNotFoundException when project not found`() {
         // given
+        val owner = UserBuilder().build()
         val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById("nonexistent") } returns Optional.empty()
 
@@ -207,6 +201,8 @@ class ProjectServiceTest {
     @Test
     fun `updateProject throws AccessDeniedException when not owner`() {
         // given
+        val owner = UserBuilder().build()
+        val otherUser = UserBuilder().build(email = "other@firma.de", firstName = "Other", lastName = "User")
         val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
 
@@ -234,14 +230,9 @@ class ProjectServiceTest {
     @Test
     fun `deleteProject deletes project and its skills when owner`() {
         // given
+        val owner = UserBuilder().build()
         val project = ProjectBuilder().build(owner = owner)
-        val projectMember =
-            ProjectMemberModel(
-                project = project,
-                user = owner,
-                status = ProjectMemberStatus.ACTIVE,
-                joinedDate = Instant.now(),
-            )
+        val projectMember = ProjectMemberBuilder().build(project = project, user = owner)
         val skill = SkillBuilder().build()
         val projectSkill = ProjectSkillModel(project = project, skill = skill, level = 3)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
@@ -263,6 +254,7 @@ class ProjectServiceTest {
     @Test
     fun `deleteProject works when project has no skills`() {
         // given
+        val owner = UserBuilder().build()
         val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { projectMemberRepo.findByProject(project) } returns emptyList()
@@ -287,7 +279,7 @@ class ProjectServiceTest {
 
         // then
         assertThatThrownBy {
-            projectService.deleteProject(owner, "nonexistent")
+            projectService.deleteProject(UserBuilder().build(), "nonexistent")
         }.isInstanceOf(EntryNotFoundException::class.java)
             .satisfies({ ex ->
                 val e = ex as EntryNotFoundException
@@ -300,6 +292,8 @@ class ProjectServiceTest {
     @Test
     fun `deleteProject throws AccessDeniedException when not owner`() {
         // given
+        val owner = UserBuilder().build()
+        val otherUser = UserBuilder().build(email = "other@firma.de", firstName = "Other", lastName = "User")
         val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
 
