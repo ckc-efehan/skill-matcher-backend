@@ -1,6 +1,7 @@
 package org.efehan.skillmatcherbackend.service
 
 import io.mockk.every
+import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
@@ -8,23 +9,19 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.efehan.skillmatcherbackend.core.projectskill.ProjectSkillService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
-import org.efehan.skillmatcherbackend.persistence.ProjectModel
+import org.efehan.skillmatcherbackend.fixtures.builder.ProjectBuilder
+import org.efehan.skillmatcherbackend.fixtures.builder.ProjectSkillBuilder
+import org.efehan.skillmatcherbackend.fixtures.builder.SkillBuilder
+import org.efehan.skillmatcherbackend.fixtures.builder.UserBuilder
 import org.efehan.skillmatcherbackend.persistence.ProjectRepository
-import org.efehan.skillmatcherbackend.persistence.ProjectSkillModel
 import org.efehan.skillmatcherbackend.persistence.ProjectSkillRepository
-import org.efehan.skillmatcherbackend.persistence.ProjectStatus
-import org.efehan.skillmatcherbackend.persistence.RoleModel
-import org.efehan.skillmatcherbackend.persistence.SkillModel
 import org.efehan.skillmatcherbackend.persistence.SkillPriority
 import org.efehan.skillmatcherbackend.persistence.SkillRepository
-import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import java.time.LocalDate
 import java.util.Optional
 
 @ExtendWith(MockKExtension::class)
@@ -39,59 +36,15 @@ class ProjectSkillServiceTest {
     @MockK
     private lateinit var projectSkillRepo: ProjectSkillRepository
 
+    @InjectMockKs
     private lateinit var projectSkillService: ProjectSkillService
-
-    private val role = RoleModel("PROJECTMANAGER", null)
-
-    private val owner =
-        UserModel(
-            email = "max@firma.de",
-            passwordHash = "hashed",
-            firstName = "Max",
-            lastName = "Mustermann",
-            role = role,
-        )
-
-    private val otherOwner =
-        UserModel(
-            email = "other@firma.de",
-            passwordHash = "hashed",
-            firstName = "Other",
-            lastName = "PM",
-            role = role,
-        )
-
-    private val project =
-        ProjectModel(
-            name = "Skill Matcher",
-            description = "Internal tool",
-            status = ProjectStatus.PLANNED,
-            startDate = LocalDate.of(2026, 3, 1),
-            endDate = LocalDate.of(2026, 9, 1),
-            maxMembers = 5,
-            owner = owner,
-        )
-
-    private val otherProject =
-        ProjectModel(
-            name = "Other Project",
-            description = "Other tool",
-            status = ProjectStatus.ACTIVE,
-            startDate = LocalDate.of(2026, 4, 1),
-            endDate = LocalDate.of(2026, 10, 1),
-            maxMembers = 3,
-            owner = otherOwner,
-        )
-
-    @BeforeEach
-    fun setUp() {
-        projectSkillService = ProjectSkillService(projectRepo, skillRepo, projectSkillRepo)
-    }
 
     @Test
     fun `addOrUpdateSkill creates new skill and project skill`() {
         // given
-        val skill = SkillModel(name = "kotlin")
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
+        val skill = SkillBuilder().build(name = "kotlin")
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { skillRepo.findByNameIgnoreCase("kotlin") } returns null
         every { skillRepo.save(any()) } returns skill
@@ -99,13 +52,13 @@ class ProjectSkillServiceTest {
         every { projectSkillRepo.save(any()) } returnsArgument 0
 
         // when
-        val (dto, created) = projectSkillService.addOrUpdateSkill(owner, project.id, "Kotlin", 3)
+        val (result, created) = projectSkillService.addOrUpdateSkill(owner, project.id, "Kotlin", 3)
 
         // then
         assertThat(created).isTrue()
-        assertThat(dto.name).isEqualTo("kotlin")
-        assertThat(dto.level).isEqualTo(3)
-        assertThat(dto.priority).isEqualTo("MUST_HAVE")
+        assertThat(result.skill.name).isEqualTo("kotlin")
+        assertThat(result.level).isEqualTo(3)
+        assertThat(result.priority).isEqualTo(SkillPriority.MUST_HAVE)
         verify(exactly = 1) { skillRepo.save(any()) }
         verify(exactly = 1) { projectSkillRepo.save(any()) }
     }
@@ -113,46 +66,44 @@ class ProjectSkillServiceTest {
     @Test
     fun `addOrUpdateSkill reuses existing skill`() {
         // given
-        val skill = SkillModel(name = "java")
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
+        val skill = SkillBuilder().build(name = "java")
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { skillRepo.findByNameIgnoreCase("java") } returns skill
         every { projectSkillRepo.findByProjectAndSkillId(project, skill.id) } returns null
         every { projectSkillRepo.save(any()) } returnsArgument 0
 
         // when
-        val (dto, created) = projectSkillService.addOrUpdateSkill(owner, project.id, "Java", 4)
+        val (result, created) = projectSkillService.addOrUpdateSkill(owner, project.id, "Java", 4)
 
         // then
         assertThat(created).isTrue()
-        assertThat(dto.name).isEqualTo("java")
-        assertThat(dto.level).isEqualTo(4)
-        assertThat(dto.priority).isEqualTo("MUST_HAVE")
+        assertThat(result.skill.name).isEqualTo("java")
+        assertThat(result.level).isEqualTo(4)
+        assertThat(result.priority).isEqualTo(SkillPriority.MUST_HAVE)
         verify(exactly = 0) { skillRepo.save(any()) }
     }
 
     @Test
     fun `addOrUpdateSkill updates level and priority when project already has the skill`() {
         // given
-        val skill = SkillModel(name = "kotlin")
-        val existingProjectSkill =
-            ProjectSkillModel(
-                project = project,
-                skill = skill,
-                level = 2,
-                priority = SkillPriority.MUST_HAVE,
-            )
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
+        val skill = SkillBuilder().build(name = "kotlin")
+        val existingProjectSkill = ProjectSkillBuilder().build(project = project, skill = skill, level = 2)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { skillRepo.findByNameIgnoreCase("kotlin") } returns skill
         every { projectSkillRepo.findByProjectAndSkillId(project, skill.id) } returns existingProjectSkill
         every { projectSkillRepo.save(any()) } returnsArgument 0
 
         // when
-        val (dto, created) = projectSkillService.addOrUpdateSkill(owner, project.id, "Kotlin", 5, "NICE_TO_HAVE")
+        val (result, created) = projectSkillService.addOrUpdateSkill(owner, project.id, "Kotlin", 5, "NICE_TO_HAVE")
 
         // then
         assertThat(created).isFalse()
-        assertThat(dto.level).isEqualTo(5)
-        assertThat(dto.priority).isEqualTo("NICE_TO_HAVE")
+        assertThat(result.level).isEqualTo(5)
+        assertThat(result.priority).isEqualTo(SkillPriority.NICE_TO_HAVE)
         assertThat(existingProjectSkill.priority).isEqualTo(SkillPriority.NICE_TO_HAVE)
         verify(exactly = 0) { skillRepo.save(any()) }
     }
@@ -160,22 +111,28 @@ class ProjectSkillServiceTest {
     @Test
     fun `addOrUpdateSkill trims and lowercases skill name`() {
         // given
-        val skill = SkillModel(name = "spring boot")
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
+        val skill = SkillBuilder().build(name = "spring boot")
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { skillRepo.findByNameIgnoreCase("spring boot") } returns skill
         every { projectSkillRepo.findByProjectAndSkillId(project, skill.id) } returns null
         every { projectSkillRepo.save(any()) } returnsArgument 0
 
         // when
-        val (dto, _) = projectSkillService.addOrUpdateSkill(owner, project.id, "  Spring Boot  ", 3)
+        val (result, _) = projectSkillService.addOrUpdateSkill(owner, project.id, "  Spring Boot  ", 3)
 
         // then
-        assertThat(dto.name).isEqualTo("spring boot")
+        assertThat(result.skill.name).isEqualTo("spring boot")
         verify { skillRepo.findByNameIgnoreCase("spring boot") }
     }
 
     @Test
     fun `addOrUpdateSkill throws when level is below 1`() {
+        // given
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
+
         // then
         assertThatThrownBy {
             projectSkillService.addOrUpdateSkill(owner, project.id, "Kotlin", 0)
@@ -186,6 +143,10 @@ class ProjectSkillServiceTest {
 
     @Test
     fun `addOrUpdateSkill throws when level is above 5`() {
+        // given
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
+
         // then
         assertThatThrownBy {
             projectSkillService.addOrUpdateSkill(owner, project.id, "Kotlin", 6)
@@ -197,6 +158,7 @@ class ProjectSkillServiceTest {
     @Test
     fun `addOrUpdateSkill throws EntryNotFoundException when project not found`() {
         // given
+        val owner = UserBuilder().build()
         every { projectRepo.findById("nonexistent") } returns Optional.empty()
 
         // then
@@ -214,11 +176,14 @@ class ProjectSkillServiceTest {
     @Test
     fun `addOrUpdateSkill throws AccessDeniedException when user is not project owner`() {
         // given
+        val owner = UserBuilder().build()
+        val otherUser = UserBuilder().build(email = "other@firma.de", firstName = "Other", lastName = "User")
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
 
         // then
         assertThatThrownBy {
-            projectSkillService.addOrUpdateSkill(otherOwner, project.id, "Kotlin", 3)
+            projectSkillService.addOrUpdateSkill(otherUser, project.id, "Kotlin", 3)
         }.isInstanceOf(AccessDeniedException::class.java)
             .satisfies({ ex ->
                 val e = ex as AccessDeniedException
@@ -229,14 +194,16 @@ class ProjectSkillServiceTest {
     }
 
     @Test
-    fun `getProjectSkills returns mapped DTOs`() {
+    fun `getProjectSkills returns project skill models`() {
         // given
-        val skill1 = SkillModel(name = "kotlin")
-        val skill2 = SkillModel(name = "java")
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
+        val skill1 = SkillBuilder().build(name = "kotlin")
+        val skill2 = SkillBuilder().build(name = "java")
         val projectSkills =
             listOf(
-                ProjectSkillModel(project = project, skill = skill1, level = 4),
-                ProjectSkillModel(project = project, skill = skill2, level = 3, priority = SkillPriority.NICE_TO_HAVE),
+                ProjectSkillBuilder().build(project = project, skill = skill1, level = 4),
+                ProjectSkillBuilder().build(project = project, skill = skill2, level = 3, priority = SkillPriority.NICE_TO_HAVE),
             )
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { projectSkillRepo.findByProject(project) } returns projectSkills
@@ -246,17 +213,19 @@ class ProjectSkillServiceTest {
 
         // then
         assertThat(result).hasSize(2)
-        assertThat(result[0].name).isEqualTo("kotlin")
+        assertThat(result[0].skill.name).isEqualTo("kotlin")
         assertThat(result[0].level).isEqualTo(4)
-        assertThat(result[0].priority).isEqualTo("MUST_HAVE")
-        assertThat(result[1].name).isEqualTo("java")
+        assertThat(result[0].priority).isEqualTo(SkillPriority.MUST_HAVE)
+        assertThat(result[1].skill.name).isEqualTo("java")
         assertThat(result[1].level).isEqualTo(3)
-        assertThat(result[1].priority).isEqualTo("NICE_TO_HAVE")
+        assertThat(result[1].priority).isEqualTo(SkillPriority.NICE_TO_HAVE)
     }
 
     @Test
     fun `getProjectSkills returns empty list when project has no skills`() {
         // given
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { projectSkillRepo.findByProject(project) } returns emptyList()
 
@@ -270,11 +239,14 @@ class ProjectSkillServiceTest {
     @Test
     fun `getProjectSkills throws AccessDeniedException when user is not project owner`() {
         // given
+        val owner = UserBuilder().build()
+        val otherUser = UserBuilder().build(email = "other@firma.de", firstName = "Other", lastName = "User")
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
 
         // then
         assertThatThrownBy {
-            projectSkillService.getProjectSkills(otherOwner, project.id)
+            projectSkillService.getProjectSkills(otherUser, project.id)
         }.isInstanceOf(AccessDeniedException::class.java)
             .satisfies({ ex ->
                 val e = ex as AccessDeniedException
@@ -285,8 +257,10 @@ class ProjectSkillServiceTest {
     @Test
     fun `deleteSkill deletes project skill successfully`() {
         // given
-        val skill = SkillModel(name = "kotlin")
-        val projectSkill = ProjectSkillModel(project = project, skill = skill, level = 3)
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
+        val skill = SkillBuilder().build(name = "kotlin")
+        val projectSkill = ProjectSkillBuilder().build(project = project, skill = skill)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { projectSkillRepo.findById(projectSkill.id) } returns Optional.of(projectSkill)
         every { projectSkillRepo.delete(projectSkill) } returns Unit
@@ -301,6 +275,8 @@ class ProjectSkillServiceTest {
     @Test
     fun `deleteSkill throws EntryNotFoundException when skill not found`() {
         // given
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { projectSkillRepo.findById("nonexistent") } returns Optional.empty()
 
@@ -319,8 +295,12 @@ class ProjectSkillServiceTest {
     @Test
     fun `deleteSkill throws AccessDeniedException when project skill belongs to different project`() {
         // given
-        val skill = SkillModel(name = "kotlin")
-        val otherProjectSkill = ProjectSkillModel(project = otherProject, skill = skill, level = 3)
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
+        val otherOwner = UserBuilder().build(email = "other@firma.de", firstName = "Other", lastName = "PM")
+        val otherProject = ProjectBuilder().build(owner = otherOwner, name = "Other Project")
+        val skill = SkillBuilder().build(name = "kotlin")
+        val otherProjectSkill = ProjectSkillBuilder().build(project = otherProject, skill = skill)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { projectSkillRepo.findById(otherProjectSkill.id) } returns Optional.of(otherProjectSkill)
 
@@ -339,13 +319,16 @@ class ProjectSkillServiceTest {
     @Test
     fun `deleteSkill throws AccessDeniedException when user is not project owner`() {
         // given
-        val skill = SkillModel(name = "kotlin")
-        val projectSkill = ProjectSkillModel(project = project, skill = skill, level = 3)
+        val owner = UserBuilder().build()
+        val otherUser = UserBuilder().build(email = "other@firma.de", firstName = "Other", lastName = "User")
+        val project = ProjectBuilder().build(owner = owner)
+        val skill = SkillBuilder().build(name = "kotlin")
+        val projectSkill = ProjectSkillBuilder().build(project = project, skill = skill)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
 
         // then
         assertThatThrownBy {
-            projectSkillService.deleteSkill(otherOwner, project.id, projectSkill.id)
+            projectSkillService.deleteSkill(otherUser, project.id, projectSkill.id)
         }.isInstanceOf(AccessDeniedException::class.java)
             .satisfies({ ex ->
                 val e = ex as AccessDeniedException

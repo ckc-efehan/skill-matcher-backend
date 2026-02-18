@@ -7,11 +7,11 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import org.efehan.skillmatcherbackend.core.auth.SecurityUser
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCodeResponse
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -183,10 +184,11 @@ class ProjectSkillController(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @PathVariable projectId: String,
         @Valid @RequestBody req: AddProjectSkillRequest,
-    ): ResponseEntity<ProjectSkillDto> {
-        val (dto, created) = service.addOrUpdateSkill(securityUser.user, projectId, req.name, req.level, req.priority)
-        val status = if (created) HttpStatus.CREATED else HttpStatus.OK
-        return ResponseEntity.status(status).body(dto)
+        response: HttpServletResponse,
+    ): ProjectSkillDto {
+        val (model, created) = service.addOrUpdateSkill(securityUser.user, projectId, req.name, req.level, req.priority)
+        response.status = if (created) HttpStatus.CREATED.value() else HttpStatus.OK.value()
+        return model.toDto()
     }
 
     @Operation(
@@ -269,10 +271,11 @@ class ProjectSkillController(
     )
     @GetMapping
     @PreAuthorize("hasRole('PROJECTMANAGER')")
+    @ResponseStatus(HttpStatus.OK)
     fun getProjectSkills(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @PathVariable projectId: String,
-    ): ResponseEntity<List<ProjectSkillDto>> = ResponseEntity.ok(service.getProjectSkills(securityUser.user, projectId))
+    ): List<ProjectSkillDto> = service.getProjectSkills(securityUser.user, projectId).map { it.toDto() }
 
     @Operation(
         summary = "Delete a project skill",
@@ -365,12 +368,12 @@ class ProjectSkillController(
     )
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('PROJECTMANAGER')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun delete(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @PathVariable projectId: String,
         @PathVariable id: String,
-    ): ResponseEntity<Void> {
+    ) {
         service.deleteSkill(securityUser.user, projectId, id)
-        return ResponseEntity.noContent().build()
     }
 }
