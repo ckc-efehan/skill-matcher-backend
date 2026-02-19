@@ -28,7 +28,7 @@ class UserSkillModel(
     @Column(nullable = false)
     var level: Int,
 ) : AuditingBaseEntity() {
-    fun toDto() =
+    fun toDTO() =
         UserSkillDto(
             id = id,
             name = skill.name,

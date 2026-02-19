@@ -183,7 +183,7 @@ class AdminUserController(
     @ResponseStatus(HttpStatus.CREATED)
     fun createUser(
         @Valid @RequestBody request: CreateUserRequest,
-    ): AdminUserDto = adminUserService.createUser(request.email, request.role).toAdminDto()
+    ): AdminUserDto = adminUserService.createUser(request.email, request.role).toAdminDTO()
 
     @Operation(
         summary = "Resend invitation",
@@ -440,7 +440,7 @@ class AdminUserController(
     )
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
-    fun listUsers(): List<AdminUserDto> = adminUserService.listUsers().map { it.toAdminDto() }
+    fun listUsers(): List<AdminUserDto> = adminUserService.listUsers().map { it.toAdminDTO() }
 
     @Operation(
         summary = "Update user role",

@@ -117,7 +117,7 @@ class ProjectMemberController(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @PathVariable projectId: String,
         @Valid @RequestBody request: AddProjectMemberRequest,
-    ): ProjectMemberDto = service.addMember(securityUser.user, projectId, request.userId).toDto()
+    ): ProjectMemberDto = service.addMember(securityUser.user, projectId, request.userId).toDTO()
 
     @Operation(
         summary = "List active members of a project",
@@ -152,7 +152,7 @@ class ProjectMemberController(
     @ResponseStatus(HttpStatus.OK)
     fun getMembers(
         @PathVariable projectId: String,
-    ): List<ProjectMemberDto> = service.getMembers(projectId).map { it.toDto() }
+    ): List<ProjectMemberDto> = service.getMembers(projectId).map { it.toDTO() }
 
     @Operation(
         summary = "Remove a member from a project",

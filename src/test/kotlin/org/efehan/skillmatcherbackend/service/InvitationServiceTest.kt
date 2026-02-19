@@ -16,11 +16,10 @@ import org.efehan.skillmatcherbackend.core.auth.PasswordValidationService
 import org.efehan.skillmatcherbackend.core.invitation.InvitationService
 import org.efehan.skillmatcherbackend.core.mail.EmailService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
+import org.efehan.skillmatcherbackend.fixtures.builder.UserBuilder
 import org.efehan.skillmatcherbackend.persistence.InvitationTokenModel
 import org.efehan.skillmatcherbackend.persistence.InvitationTokenRepository
 import org.efehan.skillmatcherbackend.persistence.RefreshTokenRepository
-import org.efehan.skillmatcherbackend.persistence.RoleModel
-import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.shared.exceptions.InvalidTokenException
 import org.junit.jupiter.api.BeforeEach
@@ -99,24 +98,10 @@ class InvitationServiceTest {
             )
     }
 
-    private fun buildTestUser(): UserModel {
-        val role = RoleModel("EMPLOYER", null)
-        val user =
-            UserModel(
-                email = "max@firma.de",
-                passwordHash = null,
-                firstName = null,
-                lastName = null,
-                role = role,
-            )
-        user.isEnabled = false
-        return user
-    }
-
     @Test
     fun `createAndSendInvitation saves token and sends email`() {
         // given
-        val user = buildTestUser()
+        val user = UserBuilder().build(passwordHash = null, firstName = null, lastName = null, isEnabled = false)
         val tokenSlot = slot<InvitationTokenModel>()
 
         every { jwtService.generateOpaqueRefreshToken() } returns RAW_TOKEN
@@ -140,9 +125,9 @@ class InvitationServiceTest {
     }
 
     @Test
-    fun `validateInvitation returns email for valid token`() {
+    fun `validateInvitation returns invitation for valid token`() {
         // given
-        val user = buildTestUser()
+        val user = UserBuilder().build(passwordHash = null, firstName = null, lastName = null, isEnabled = false)
         val invitation =
             InvitationTokenModel(
                 tokenHash = TOKEN_HASH,
@@ -158,8 +143,8 @@ class InvitationServiceTest {
         val result = invitationService.validateInvitation(RAW_TOKEN)
 
         // then
-        assertThat(result.valid).isTrue()
-        assertThat(result.email).isEqualTo("max@firma.de")
+        assertThat(result).isEqualTo(invitation)
+        assertThat(result.user.email).isEqualTo("max@firma.de")
     }
 
     @Test
@@ -181,7 +166,7 @@ class InvitationServiceTest {
     @Test
     fun `validateInvitation throws when token already used`() {
         // given
-        val user = buildTestUser()
+        val user = UserBuilder().build(passwordHash = null, firstName = null, lastName = null, isEnabled = false)
         val invitation =
             InvitationTokenModel(
                 tokenHash = TOKEN_HASH,
@@ -206,7 +191,7 @@ class InvitationServiceTest {
     @Test
     fun `validateInvitation throws when token expired`() {
         // given
-        val user = buildTestUser()
+        val user = UserBuilder().build(passwordHash = null, firstName = null, lastName = null, isEnabled = false)
         val invitation =
             InvitationTokenModel(
                 tokenHash = TOKEN_HASH,
@@ -231,7 +216,7 @@ class InvitationServiceTest {
     @Test
     fun `acceptInvitation succeeds with valid token`() {
         // given
-        val user = buildTestUser()
+        val user = UserBuilder().build(passwordHash = null, firstName = null, lastName = null, isEnabled = false)
         val invitation =
             InvitationTokenModel(
                 tokenHash = TOKEN_HASH,
@@ -283,7 +268,7 @@ class InvitationServiceTest {
     @Test
     fun `acceptInvitation throws when token already used`() {
         // given
-        val user = buildTestUser()
+        val user = UserBuilder().build(passwordHash = null, firstName = null, lastName = null, isEnabled = false)
         val invitation =
             InvitationTokenModel(
                 tokenHash = TOKEN_HASH,
@@ -308,7 +293,7 @@ class InvitationServiceTest {
     @Test
     fun `acceptInvitation throws when token expired`() {
         // given
-        val user = buildTestUser()
+        val user = UserBuilder().build(passwordHash = null, firstName = null, lastName = null, isEnabled = false)
         val invitation =
             InvitationTokenModel(
                 tokenHash = TOKEN_HASH,
@@ -333,7 +318,7 @@ class InvitationServiceTest {
     @Test
     fun `acceptInvitation validates password`() {
         // given
-        val user = buildTestUser()
+        val user = UserBuilder().build(passwordHash = null, firstName = null, lastName = null, isEnabled = false)
         val invitation =
             InvitationTokenModel(
                 tokenHash = TOKEN_HASH,
@@ -362,7 +347,7 @@ class InvitationServiceTest {
     @Test
     fun `resendInvitation creates new invitation for existing user`() {
         // given
-        val user = buildTestUser()
+        val user = UserBuilder().build(passwordHash = null, firstName = null, lastName = null, isEnabled = false)
 
         every { userRepository.findById("user-id") } returns Optional.of(user)
         every { jwtService.generateOpaqueRefreshToken() } returns RAW_TOKEN

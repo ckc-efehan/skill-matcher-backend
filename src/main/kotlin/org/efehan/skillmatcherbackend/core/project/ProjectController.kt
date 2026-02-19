@@ -151,7 +151,7 @@ class ProjectController(
                 startDate = request.startDate,
                 endDate = request.endDate,
                 maxMembers = request.maxMembers,
-            ).toDto()
+            ).toDTO()
 
     @Operation(
         summary = "Get a project",
@@ -235,7 +235,7 @@ class ProjectController(
     @ResponseStatus(HttpStatus.OK)
     fun getProject(
         @PathVariable id: String,
-    ): ProjectDto = service.getProject(id).toDto()
+    ): ProjectDto = service.getProject(id).toDTO()
 
     @Operation(
         summary = "Get all projects",
@@ -272,7 +272,7 @@ class ProjectController(
     )
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
-    fun getAllProjects(): List<ProjectDto> = service.getAllProjects().map(ProjectModel::toDto)
+    fun getAllProjects(): List<ProjectDto> = service.getAllProjects().map(ProjectModel::toDTO)
 
     @Operation(
         summary = "Update a project",
@@ -418,7 +418,7 @@ class ProjectController(
                 startDate = request.startDate,
                 endDate = request.endDate,
                 maxMembers = request.maxMembers,
-            ).toDto()
+            ).toDTO()
 
     @Operation(
         summary = "Delete a project",

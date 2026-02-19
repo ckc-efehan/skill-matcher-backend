@@ -58,13 +58,34 @@ class InvitationService(
         logger.info("Invitation created for user={}", user.email)
     }
 
-    fun validateInvitation(rawToken: String): ValidateInvitationResponse {
-        val invitation = findValidInvitation(rawToken)
+    fun validateInvitation(rawToken: String): InvitationTokenModel {
+        val tokenHash = jwtService.hashToken(rawToken)
+        val invitation =
+            invitationTokenRepository.findByTokenHash(tokenHash)
+                ?: throw InvalidTokenException(
+                    message = "Invitation token is invalid.",
+                    errorCode = GlobalErrorCode.INVALID_INVITATION_TOKEN,
+                    status = HttpStatus.BAD_REQUEST,
+                )
+
+        if (invitation.used) {
+            throw InvalidTokenException(
+                message = "Invitation has already been accepted.",
+                errorCode = GlobalErrorCode.INVITATION_ALREADY_ACCEPTED,
+                status = HttpStatus.BAD_REQUEST,
+            )
+        }
+
+        if (invitation.expiresAt.isBefore(Instant.now(clock))) {
+            throw InvalidTokenException(
+                message = "Invitation token has expired.",
+                errorCode = GlobalErrorCode.INVITATION_TOKEN_EXPIRED,
+                status = HttpStatus.BAD_REQUEST,
+            )
+        }
+
         logger.info("Invitation validated for user={}", invitation.user.email)
-        return ValidateInvitationResponse(
-            valid = true,
-            email = invitation.user.email,
-        )
+        return invitation
     }
 
     fun acceptInvitation(
@@ -73,7 +94,30 @@ class InvitationService(
         firstName: String,
         lastName: String,
     ): AuthResponse {
-        val invitation = findValidInvitation(rawToken)
+        val tokenHash = jwtService.hashToken(rawToken)
+        val invitation =
+            invitationTokenRepository.findByTokenHash(tokenHash)
+                ?: throw InvalidTokenException(
+                    message = "Invitation token is invalid.",
+                    errorCode = GlobalErrorCode.INVALID_INVITATION_TOKEN,
+                    status = HttpStatus.BAD_REQUEST,
+                )
+
+        if (invitation.used) {
+            throw InvalidTokenException(
+                message = "Invitation has already been accepted.",
+                errorCode = GlobalErrorCode.INVITATION_ALREADY_ACCEPTED,
+                status = HttpStatus.BAD_REQUEST,
+            )
+        }
+
+        if (invitation.expiresAt.isBefore(Instant.now(clock))) {
+            throw InvalidTokenException(
+                message = "Invitation token has expired.",
+                errorCode = GlobalErrorCode.INVITATION_TOKEN_EXPIRED,
+                status = HttpStatus.BAD_REQUEST,
+            )
+        }
 
         passwordValidationService.validateOrThrow(newPassword)
 
@@ -124,34 +168,5 @@ class InvitationService(
 
         logger.info("Resending invitation for userId={}", userId)
         createAndSendInvitation(user)
-    }
-
-    private fun findValidInvitation(rawToken: String): InvitationTokenModel {
-        val tokenHash = jwtService.hashToken(rawToken)
-        val invitation =
-            invitationTokenRepository.findByTokenHash(tokenHash)
-                ?: throw InvalidTokenException(
-                    message = "Invitation token is invalid.",
-                    errorCode = GlobalErrorCode.INVALID_INVITATION_TOKEN,
-                    status = HttpStatus.BAD_REQUEST,
-                )
-
-        if (invitation.used) {
-            throw InvalidTokenException(
-                message = "Invitation has already been accepted.",
-                errorCode = GlobalErrorCode.INVITATION_ALREADY_ACCEPTED,
-                status = HttpStatus.BAD_REQUEST,
-            )
-        }
-
-        if (invitation.expiresAt.isBefore(Instant.now(clock))) {
-            throw InvalidTokenException(
-                message = "Invitation token has expired.",
-                errorCode = GlobalErrorCode.INVITATION_TOKEN_EXPIRED,
-                status = HttpStatus.BAD_REQUEST,
-            )
-        }
-
-        return invitation
     }
 }

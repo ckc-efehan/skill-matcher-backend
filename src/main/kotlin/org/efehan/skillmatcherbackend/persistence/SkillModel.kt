@@ -13,7 +13,7 @@ class SkillModel(
     @Column(name = "name", nullable = false, unique = true)
     val name: String,
 ) : AuditingBaseEntity() {
-    fun toDto() =
+    fun toDTO() =
         SkillDto(
             id = id,
             name = name,

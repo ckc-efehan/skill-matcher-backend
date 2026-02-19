@@ -188,7 +188,7 @@ class ProjectSkillController(
     ): ProjectSkillDto {
         val (model, created) = service.addOrUpdateSkill(securityUser.user, projectId, req.name, req.level, req.priority)
         response.status = if (created) HttpStatus.CREATED.value() else HttpStatus.OK.value()
-        return model.toDto()
+        return model.toDTO()
     }
 
     @Operation(
@@ -275,7 +275,7 @@ class ProjectSkillController(
     fun getProjectSkills(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @PathVariable projectId: String,
-    ): List<ProjectSkillDto> = service.getProjectSkills(securityUser.user, projectId).map { it.toDto() }
+    ): List<ProjectSkillDto> = service.getProjectSkills(securityUser.user, projectId).map { it.toDTO() }
 
     @Operation(
         summary = "Delete a project skill",

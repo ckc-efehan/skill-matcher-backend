@@ -32,7 +32,7 @@ class ProjectSkillModel(
     @Column(name = "priority", nullable = false)
     var priority: SkillPriority = SkillPriority.MUST_HAVE,
 ) : AuditingBaseEntity() {
-    fun toDto() =
+    fun toDTO() =
         ProjectSkillDto(
             id = id,
             name = skill.name,

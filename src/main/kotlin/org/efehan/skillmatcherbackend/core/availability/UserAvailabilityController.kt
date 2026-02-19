@@ -106,7 +106,7 @@ class UserAvailabilityController(
                 user = securityUser.user,
                 availableFrom = request.availableFrom,
                 availableTo = request.availableTo,
-            ).toDto()
+            ).toDTO()
 
     @Operation(
         summary = "Get my availability periods",
@@ -137,7 +137,7 @@ class UserAvailabilityController(
     @ResponseStatus(HttpStatus.OK)
     fun getAll(
         @AuthenticationPrincipal securityUser: SecurityUser,
-    ): List<UserAvailabilityDto> = service.getAll(securityUser.user).map(UserAvailabilityModel::toDto)
+    ): List<UserAvailabilityDto> = service.getAll(securityUser.user).map(UserAvailabilityModel::toDTO)
 
     @Operation(
         summary = "Update an availability period",
@@ -219,7 +219,7 @@ class UserAvailabilityController(
                 id = id,
                 availableFrom = request.availableFrom,
                 availableTo = request.availableTo,
-            ).toDto()
+            ).toDTO()
 
     @Operation(
         summary = "Delete an availability period",

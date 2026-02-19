@@ -27,7 +27,7 @@ class UserAvailabilityModel(
     @Column(name = "available_to", nullable = false)
     var availableTo: LocalDate,
 ) : AuditingBaseEntity() {
-    fun toDto() =
+    fun toDTO() =
         UserAvailabilityDto(
             id = id,
             availableFrom = availableFrom,

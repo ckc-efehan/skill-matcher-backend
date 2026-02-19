@@ -39,5 +39,5 @@ class SkillController(
     )
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
-    fun getAllSkills(): List<SkillDto> = service.getAllSkills().map(SkillModel::toDto)
+    fun getAllSkills(): List<SkillDto> = service.getAllSkills().map(SkillModel::toDTO)
 }

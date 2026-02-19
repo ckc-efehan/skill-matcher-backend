@@ -7,6 +7,7 @@ import jakarta.persistence.Index
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import org.efehan.skillmatcherbackend.core.invitation.ValidateInvitationResponse
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 import java.time.Instant
@@ -31,7 +32,13 @@ class InvitationTokenModel(
     val expiresAt: Instant,
     @Column(name = "used", nullable = false)
     var used: Boolean = false,
-) : AuditingBaseEntity()
+) : AuditingBaseEntity() {
+    fun toDTO() =
+        ValidateInvitationResponse(
+            valid = true,
+            email = user.email,
+        )
+}
 
 @Repository
 interface InvitationTokenRepository : JpaRepository<InvitationTokenModel, String> {

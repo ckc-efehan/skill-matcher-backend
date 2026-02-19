@@ -33,7 +33,7 @@ class ProjectModel(
     @JoinColumn(name = "owner_id", nullable = false)
     val owner: UserModel,
 ) : AuditingBaseEntity() {
-    fun toDto() =
+    fun toDTO() =
         ProjectDto(
             id = id,
             name = name,

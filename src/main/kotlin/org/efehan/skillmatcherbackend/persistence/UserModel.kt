@@ -37,7 +37,7 @@ class UserModel(
     @Column(name = "is_enabled", nullable = false)
     var isEnabled: Boolean = false
 
-    fun toAdminDto() =
+    fun toAdminDTO() =
         AdminUserDto(
             id = id,
             email = email,

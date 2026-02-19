@@ -137,7 +137,7 @@ class MySkillController(
     ): ResponseEntity<UserSkillDto> {
         val (model, created) = service.addOrUpdateSkill(securityUser.user, req.name, req.level)
         val status = if (created) HttpStatus.CREATED else HttpStatus.OK
-        return ResponseEntity.status(status).body(model.toDto())
+        return ResponseEntity.status(status).body(model.toDTO())
     }
 
     @Operation(
@@ -178,7 +178,7 @@ class MySkillController(
     @ResponseStatus(HttpStatus.OK)
     fun getMySkills(
         @AuthenticationPrincipal securityUser: SecurityUser,
-    ): List<UserSkillDto> = service.getUserSkills(securityUser.user).map(UserSkillModel::toDto)
+    ): List<UserSkillDto> = service.getUserSkills(securityUser.user).map(UserSkillModel::toDTO)
 
     @Operation(
         summary = "Delete a skill",

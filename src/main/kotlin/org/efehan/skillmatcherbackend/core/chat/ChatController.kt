@@ -68,7 +68,7 @@ class ChatController(
         val conversations = chatService.getConversations(user)
         val lastMessages = chatService.getLastMessages(conversations)
         return conversations.map {
-            it.toResponse(currentUser = user, lastMessage = lastMessages[it.id])
+            it.toDTO(currentUser = user, lastMessage = lastMessages[it.id])
         }
     }
 
@@ -161,7 +161,7 @@ class ChatController(
                 conversationId = id,
                 before = before ?: Instant.now(),
                 limit = limit,
-            ).map { it.toResponse() }
+            ).map { it.toDTO() }
 
     @Operation(
         summary = "Create or find a conversation",
@@ -255,7 +255,7 @@ class ChatController(
             )
         val response =
             conversation
-                .toResponse(
+                .toDTO(
                     currentUser = user,
                     lastMessage = chatService.getLastMessage(conversation),
                 )

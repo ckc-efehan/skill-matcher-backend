@@ -33,7 +33,7 @@ class ProjectMemberModel(
     @Column(name = "joined_date", nullable = false)
     val joinedDate: Instant,
 ) : AuditingBaseEntity() {
-    fun toDto() =
+    fun toDTO() =
         ProjectMemberDto(
             id = id,
             userId = user.id,
