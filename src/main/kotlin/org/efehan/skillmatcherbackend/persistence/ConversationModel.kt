@@ -25,7 +25,7 @@ class ConversationModel(
     @Column(name = "last_message_at")
     var lastMessageAt: Instant? = null
 
-    fun toResponse(
+    fun toDTO(
         currentUser: UserModel,
         lastMessage: ChatMessageModel?,
     ): ConversationResponse {
@@ -38,7 +38,7 @@ class ConversationModel(
                     firstName = partner.firstName ?: "",
                     lastName = partner.lastName ?: "",
                 ),
-            lastMessage = lastMessage?.toResponse(),
+            lastMessage = lastMessage?.toDTO(),
             createdDate = createdDate!!,
         )
     }

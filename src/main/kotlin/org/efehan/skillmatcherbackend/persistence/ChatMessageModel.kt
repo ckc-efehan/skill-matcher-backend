@@ -26,7 +26,7 @@ class ChatMessageModel(
     @Column(name = "sent_at", nullable = false)
     val sentAt: Instant,
 ) : AuditingBaseEntity() {
-    fun toResponse() =
+    fun toDTO() =
         ChatMessageResponse(
             id = id,
             conversationId = conversation.id,

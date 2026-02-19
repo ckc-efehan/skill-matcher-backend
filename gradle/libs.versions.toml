@@ -10,6 +10,7 @@ spring-security = "7.0.2"
 jjwt = "0.13.0"
 mockk = "1.14.9"
 assertj = "3.27.7"
+awaitility = "4.3.0"
 springdoc = "3.0.1"
 
 [libraries]
@@ -44,6 +45,7 @@ testcontainers-postgresql = { module = "org.testcontainers:postgresql" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk"}
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj"}
+awaitility = { module = "org.awaitility:awaitility-kotlin", version.ref = "awaitility"}
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

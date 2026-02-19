@@ -8,6 +8,7 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import org.efehan.skillmatcherbackend.core.projectskill.ProjectSkillDto
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
@@ -30,7 +31,15 @@ class ProjectSkillModel(
     @Enumerated(EnumType.STRING)
     @Column(name = "priority", nullable = false)
     var priority: SkillPriority = SkillPriority.MUST_HAVE,
-) : AuditingBaseEntity()
+) : AuditingBaseEntity() {
+    fun toDTO() =
+        ProjectSkillDto(
+            id = id,
+            name = skill.name,
+            level = level,
+            priority = priority.name,
+        )
+}
 
 @Repository
 interface ProjectSkillRepository : JpaRepository<ProjectSkillModel, String> {

@@ -74,18 +74,6 @@ class PasswordValidationServiceTest {
     }
 
     @Test
-    fun `common password returns error`() {
-        val errors = service.validate("password1")
-        assertTrue(errors.any { it.contains("too common") })
-    }
-
-    @Test
-    fun `common password check is case insensitive`() {
-        val errors = service.validate("Password")
-        assertTrue(errors.any { it.contains("too common") })
-    }
-
-    @Test
     fun `password with leading whitespace returns error`() {
         val errors = service.validate(" Valid1pass!")
         assertTrue(errors.any { it.contains("whitespace") })

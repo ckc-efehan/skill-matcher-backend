@@ -4,13 +4,13 @@ import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
 import org.efehan.skillmatcherbackend.persistence.ProjectMemberModel
 import org.efehan.skillmatcherbackend.persistence.ProjectMemberRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectMemberStatus
-import org.efehan.skillmatcherbackend.persistence.ProjectModel
 import org.efehan.skillmatcherbackend.persistence.ProjectRepository
 import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
 import org.efehan.skillmatcherbackend.shared.exceptions.DuplicateEntryException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -26,12 +26,34 @@ class ProjectMemberService(
     fun addMember(
         owner: UserModel,
         projectId: String,
-        request: AddProjectMemberRequest,
-    ): ProjectMemberDto {
-        val project = findProjectOrThrow(projectId)
-        checkOwnership(project, owner)
+        userId: String,
+    ): ProjectMemberModel {
+        val project =
+            projectRepo.findByIdOrNull(projectId)
+                ?: throw EntryNotFoundException(
+                    resource = "Project",
+                    field = "id",
+                    value = projectId,
+                    errorCode = GlobalErrorCode.PROJECT_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
+        if (project.owner.id != owner.id) {
+            throw AccessDeniedException(
+                resource = "Project",
+                errorCode = GlobalErrorCode.PROJECT_ACCESS_DENIED,
+                status = HttpStatus.FORBIDDEN,
+            )
+        }
 
-        val user = findUserOrThrow(request.userId)
+        val user =
+            userRepo.findByIdOrNull(userId)
+                ?: throw EntryNotFoundException(
+                    resource = "User",
+                    field = "id",
+                    value = userId,
+                    errorCode = GlobalErrorCode.USER_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
 
         // bereits aktives Mitglied?
         memberRepo.findByProjectAndUser(project, user)?.let { existing ->
@@ -46,7 +68,7 @@ class ProjectMemberService(
             }
             // LEFT → reaktivieren
             existing.status = ProjectMemberStatus.ACTIVE
-            return memberRepo.save(existing).toDto()
+            return memberRepo.save(existing)
         }
 
         // maxMembers prüfen
@@ -61,24 +83,29 @@ class ProjectMemberService(
             )
         }
 
-        val member =
-            memberRepo.save(
-                ProjectMemberModel(
-                    project = project,
-                    user = user,
-                    status = ProjectMemberStatus.ACTIVE,
-                    joinedDate = Instant.now(),
-                ),
-            )
-        return member.toDto()
+        return memberRepo.save(
+            ProjectMemberModel(
+                project = project,
+                user = user,
+                status = ProjectMemberStatus.ACTIVE,
+                joinedDate = Instant.now(),
+            ),
+        )
     }
 
-    fun getMembers(projectId: String): List<ProjectMemberDto> {
-        val project = findProjectOrThrow(projectId)
+    fun getMembers(projectId: String): List<ProjectMemberModel> {
+        val project =
+            projectRepo.findByIdOrNull(projectId)
+                ?: throw EntryNotFoundException(
+                    resource = "Project",
+                    field = "id",
+                    value = projectId,
+                    errorCode = GlobalErrorCode.PROJECT_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
         return memberRepo
             .findByProject(project)
             .filter { it.status == ProjectMemberStatus.ACTIVE }
-            .map { it.toDto() }
     }
 
     fun removeMember(
@@ -86,10 +113,32 @@ class ProjectMemberService(
         projectId: String,
         userId: String,
     ) {
-        val project = findProjectOrThrow(projectId)
-        checkOwnership(project, owner)
+        val project =
+            projectRepo.findByIdOrNull(projectId)
+                ?: throw EntryNotFoundException(
+                    resource = "Project",
+                    field = "id",
+                    value = projectId,
+                    errorCode = GlobalErrorCode.PROJECT_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
+        if (project.owner.id != owner.id) {
+            throw AccessDeniedException(
+                resource = "Project",
+                errorCode = GlobalErrorCode.PROJECT_ACCESS_DENIED,
+                status = HttpStatus.FORBIDDEN,
+            )
+        }
 
-        val user = findUserOrThrow(userId)
+        val user =
+            userRepo.findByIdOrNull(userId)
+                ?: throw EntryNotFoundException(
+                    resource = "User",
+                    field = "id",
+                    value = userId,
+                    errorCode = GlobalErrorCode.USER_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
         val member =
             memberRepo.findByProjectAndUser(project, user)
                 ?: throw EntryNotFoundException(
@@ -108,7 +157,15 @@ class ProjectMemberService(
         user: UserModel,
         projectId: String,
     ) {
-        val project = findProjectOrThrow(projectId)
+        val project =
+            projectRepo.findByIdOrNull(projectId)
+                ?: throw EntryNotFoundException(
+                    resource = "Project",
+                    field = "id",
+                    value = projectId,
+                    errorCode = GlobalErrorCode.PROJECT_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
         val member =
             memberRepo.findByProjectAndUser(project, user)
                 ?: throw EntryNotFoundException(
@@ -122,49 +179,4 @@ class ProjectMemberService(
         member.status = ProjectMemberStatus.LEFT
         memberRepo.save(member)
     }
-
-    private fun findProjectOrThrow(projectId: String): ProjectModel =
-        projectRepo.findById(projectId).orElseThrow {
-            EntryNotFoundException(
-                resource = "Project",
-                field = "id",
-                value = projectId,
-                errorCode = GlobalErrorCode.PROJECT_NOT_FOUND,
-                status = HttpStatus.NOT_FOUND,
-            )
-        }
-
-    private fun findUserOrThrow(userId: String): UserModel =
-        userRepo.findById(userId).orElseThrow {
-            EntryNotFoundException(
-                resource = "User",
-                field = "id",
-                value = userId,
-                errorCode = GlobalErrorCode.USER_NOT_FOUND,
-                status = HttpStatus.NOT_FOUND,
-            )
-        }
-
-    private fun checkOwnership(
-        project: ProjectModel,
-        user: UserModel,
-    ) {
-        if (project.owner.id != user.id) {
-            throw AccessDeniedException(
-                resource = "Project",
-                errorCode = GlobalErrorCode.PROJECT_ACCESS_DENIED,
-                status = HttpStatus.FORBIDDEN,
-            )
-        }
-    }
-
-    private fun ProjectMemberModel.toDto() =
-        ProjectMemberDto(
-            id = id,
-            userId = user.id,
-            userName = "${user.firstName} ${user.lastName}",
-            email = user.email,
-            status = status.name,
-            joinedDate = joinedDate,
-        )
 }

@@ -138,7 +138,7 @@ class ChatService(
         conversation.lastMessageAt = sentAt
 
         val recipientEmail = if (conversation.userOne.id == user.id) conversation.userTwo.email else conversation.userOne.email
-        val response = message.toResponse()
+        val response = message.toDTO()
         messagingTemplate.convertAndSendToUser(recipientEmail, "/queue/messages", response)
         messagingTemplate.convertAndSendToUser(user.email, "/queue/messages", response)
 

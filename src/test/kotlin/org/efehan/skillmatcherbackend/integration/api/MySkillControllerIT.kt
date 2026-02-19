@@ -2,7 +2,7 @@ package org.efehan.skillmatcherbackend.integration.api
 
 import org.assertj.core.api.Assertions.assertThat
 import org.efehan.skillmatcherbackend.core.auth.JwtService
-import org.efehan.skillmatcherbackend.core.skill.AddSkillRequest
+import org.efehan.skillmatcherbackend.fixtures.requests.MySkillFixtures
 import org.efehan.skillmatcherbackend.persistence.RoleModel
 import org.efehan.skillmatcherbackend.persistence.SkillModel
 import org.efehan.skillmatcherbackend.persistence.UserModel
@@ -24,41 +24,22 @@ class MySkillControllerIT : AbstractIntegrationTest() {
     @Autowired
     private lateinit var jwtService: JwtService
 
-    private fun createUserAndGetToken(): Pair<UserModel, String> {
-        val role = roleRepository.save(RoleModel("EMPLOYER", null))
-        val user =
-            UserModel(
-                email = "max@firma.de",
-                passwordHash = passwordEncoder.encode("Test-Password1!"),
-                firstName = "Max",
-                lastName = "Mustermann",
-                role = role,
-            )
-        user.isEnabled = true
-        userRepository.save(user)
-        return user to jwtService.generateAccessToken(user)
-    }
-
-    private fun createSecondUserAndGetToken(): Pair<UserModel, String> {
-        val role = roleRepository.findAll().first()
-        val user =
-            UserModel(
-                email = "other@firma.de",
-                passwordHash = passwordEncoder.encode("Test-Password1!"),
-                firstName = "Other",
-                lastName = "User",
-                role = role,
-            )
-        user.isEnabled = true
-        userRepository.save(user)
-        return user to jwtService.generateAccessToken(user)
-    }
-
     @Test
     fun `should add a new skill and return 201`() {
         // given
-        val (_, token) = createUserAndGetToken()
-        val request = AddSkillRequest(name = "Kotlin", level = 4)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
+        val request = MySkillFixtures.buildAddSkillRequest()
 
         // when & then
         mockMvc
@@ -69,18 +50,28 @@ class MySkillControllerIT : AbstractIntegrationTest() {
                 status { isCreated() }
                 jsonPath("$.id") { isNotEmpty() }
                 jsonPath("$.name") { value("kotlin") }
-                jsonPath("$.level") { value(4) }
+                jsonPath("$.level") { value(request.level) }
             }
     }
 
     @Test
     fun `should update existing skill and return 200`() {
         // given
-        val (user, token) = createUserAndGetToken()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
         val skill = skillRepository.save(SkillModel(name = "kotlin"))
         userSkillRepository.save(UserSkillModel(user = user, skill = skill, level = 2))
-
-        val request = AddSkillRequest(name = "Kotlin", level = 5)
+        val request = MySkillFixtures.buildAddSkillRequest(name = "Kotlin", level = 5)
 
         // when & then
         mockMvc
@@ -97,8 +88,19 @@ class MySkillControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 400 when level is below 1`() {
         // given
-        val (_, token) = createUserAndGetToken()
-        val request = AddSkillRequest(name = "Kotlin", level = 0)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
+        val request = MySkillFixtures.buildAddSkillRequest(level = 0)
 
         // when & then
         mockMvc
@@ -114,8 +116,19 @@ class MySkillControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 400 when level is above 5`() {
         // given
-        val (_, token) = createUserAndGetToken()
-        val request = AddSkillRequest(name = "Kotlin", level = 6)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
+        val request = MySkillFixtures.buildAddSkillRequest(level = 6)
 
         // when & then
         mockMvc
@@ -131,8 +144,19 @@ class MySkillControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 400 when name is blank`() {
         // given
-        val (_, token) = createUserAndGetToken()
-        val request = AddSkillRequest(name = "  ", level = 3)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
+        val request = MySkillFixtures.buildAddSkillRequest(name = "  ", level = 3)
 
         // when & then
         mockMvc
@@ -148,7 +172,18 @@ class MySkillControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return all skills for authenticated user`() {
         // given
-        val (user, token) = createUserAndGetToken()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
         val skill1 = skillRepository.save(SkillModel(name = "kotlin"))
         val skill2 = skillRepository.save(SkillModel(name = "java"))
         userSkillRepository.save(UserSkillModel(user = user, skill = skill1, level = 4))
@@ -170,7 +205,18 @@ class MySkillControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return empty list when user has no skills`() {
         // given
-        val (_, token) = createUserAndGetToken()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
 
         // when & then
         mockMvc
@@ -185,8 +231,28 @@ class MySkillControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should not return skills of other users`() {
         // given
-        val (user1, token1) = createUserAndGetToken()
-        val (user2, _) = createSecondUserAndGetToken()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user1 =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val user2 =
+            userRepository.save(
+                UserModel(
+                    email = "other@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Other",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token1 = jwtService.generateAccessToken(user1)
         val skill = skillRepository.save(SkillModel(name = "kotlin"))
         userSkillRepository.save(UserSkillModel(user = user1, skill = skill, level = 4))
         userSkillRepository.save(UserSkillModel(user = user2, skill = skill, level = 2))
@@ -205,7 +271,18 @@ class MySkillControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should delete skill and return 204`() {
         // given
-        val (user, token) = createUserAndGetToken()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
         val skill = skillRepository.save(SkillModel(name = "kotlin"))
         val userSkill = userSkillRepository.save(UserSkillModel(user = user, skill = skill, level = 3))
 
@@ -223,7 +300,18 @@ class MySkillControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 404 when deleting nonexistent skill`() {
         // given
-        val (_, token) = createUserAndGetToken()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
 
         // when & then
         mockMvc
@@ -238,8 +326,28 @@ class MySkillControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 403 when deleting another users skill`() {
         // given
-        val (_, token1) = createUserAndGetToken()
-        val (user2, _) = createSecondUserAndGetToken()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user1 =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val user2 =
+            userRepository.save(
+                UserModel(
+                    email = "other@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Other",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token1 = jwtService.generateAccessToken(user1)
         val skill = skillRepository.save(SkillModel(name = "kotlin"))
         val otherUsersSkill = userSkillRepository.save(UserSkillModel(user = user2, skill = skill, level = 3))
 
@@ -264,7 +372,7 @@ class MySkillControllerIT : AbstractIntegrationTest() {
 
         mockMvc
             .post("/api/me/skills") {
-                withBodyRequest(AddSkillRequest(name = "Kotlin", level = 3))
+                withBodyRequest(MySkillFixtures.buildAddSkillRequest())
             }.andExpect {
                 status { isUnauthorized() }
             }

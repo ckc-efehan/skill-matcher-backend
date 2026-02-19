@@ -31,10 +31,6 @@ class PasswordResetService(
 ) {
     private val logger = LoggerFactory.getLogger(PasswordResetService::class.java)
 
-    /**
-     * Initiates the password reset process by sending an email with a reset token.
-     * Always returns success to prevent email enumeration attacks.
-     */
     fun requestPasswordReset(email: String) {
         val user = userRepository.findByEmail(email)
 
@@ -76,9 +72,6 @@ class PasswordResetService(
         logger.info("Password reset token generated for user: {}", user.id)
     }
 
-    /**
-     * Validates a password reset token without consuming it.
-     */
     fun validateToken(token: String): PasswordResetTokenValidationResponse {
         val tokenHash = jwtService.hashToken(token)
         val resetToken = passwordResetTokenRepository.findByTokenHash(tokenHash)
@@ -93,9 +86,6 @@ class PasswordResetService(
         )
     }
 
-    /**
-     * Resets the password using a valid token.
-     */
     fun resetPassword(
         token: String,
         newPassword: String,
@@ -142,9 +132,6 @@ class PasswordResetService(
         logger.info("Password successfully reset for user: {}", user.id)
     }
 
-    /**
-     * Masks an email address for privacy (e.g., "t***@example.com")
-     */
     private fun maskEmail(email: String): String {
         val parts = email.split("@")
         if (parts.size != 2) return "***"

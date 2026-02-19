@@ -19,25 +19,21 @@ class SkillControllerIT : AbstractIntegrationTest() {
     @Autowired
     private lateinit var jwtService: JwtService
 
-    private fun createUserAndGetToken(): String {
-        val role = roleRepository.save(RoleModel("EMPLOYER", null))
-        val user =
-            UserModel(
-                email = "max@firma.de",
-                passwordHash = passwordEncoder.encode("Test-Password1!"),
-                firstName = "Max",
-                lastName = "Mustermann",
-                role = role,
-            )
-        user.isEnabled = true
-        userRepository.save(user)
-        return jwtService.generateAccessToken(user)
-    }
-
     @Test
     fun `should return all skills`() {
         // given
-        val token = createUserAndGetToken()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
         skillRepository.save(SkillModel(name = "kotlin"))
         skillRepository.save(SkillModel(name = "java"))
         skillRepository.save(SkillModel(name = "spring"))
@@ -57,7 +53,18 @@ class SkillControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return empty list when no skills exist`() {
         // given
-        val token = createUserAndGetToken()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Max",
+                    lastName = "Mustermann",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
 
         // when & then
         mockMvc

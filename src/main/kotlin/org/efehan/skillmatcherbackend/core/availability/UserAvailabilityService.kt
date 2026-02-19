@@ -7,6 +7,7 @@ import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
 import org.efehan.skillmatcherbackend.shared.exceptions.DuplicateEntryException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -19,65 +20,54 @@ class UserAvailabilityService(
 ) {
     fun create(
         user: UserModel,
-        request: CreateAvailabilityRequest,
-    ): UserAvailabilityDto {
-        validateDateRange(request.availableFrom, request.availableTo)
-        checkOverlap(user, request.availableFrom, request.availableTo, excludeId = null)
+        availableFrom: LocalDate,
+        availableTo: LocalDate,
+    ): UserAvailabilityModel {
+        require(!availableTo.isBefore(availableFrom)) { "availableTo must not be before availableFrom" }
 
-        val entry =
-            availabilityRepo.save(
-                UserAvailabilityModel(
-                    user = user,
-                    availableFrom = request.availableFrom,
-                    availableTo = request.availableTo,
-                ),
+        val overlaps =
+            availabilityRepo
+                .findByUser(user)
+                .any { entry -> availableFrom.isBefore(entry.availableTo) && availableTo.isAfter(entry.availableFrom) }
+        if (overlaps) {
+            throw DuplicateEntryException(
+                resource = "UserAvailability",
+                field = "period",
+                value = "$availableFrom–$availableTo",
+                errorCode = GlobalErrorCode.USER_AVAILABILITY_OVERLAP,
+                status = HttpStatus.CONFLICT,
             )
-        return entry.toDto()
+        }
+
+        return availabilityRepo.save(
+            UserAvailabilityModel(
+                user = user,
+                availableFrom = availableFrom,
+                availableTo = availableTo,
+            ),
+        )
     }
 
-    fun getAll(user: UserModel): List<UserAvailabilityDto> =
+    fun getAll(user: UserModel): List<UserAvailabilityModel> =
         availabilityRepo
             .findByUser(user)
             .sortedBy { it.availableFrom }
-            .map { it.toDto() }
 
     fun update(
         user: UserModel,
         id: String,
-        request: UpdateAvailabilityRequest,
-    ): UserAvailabilityDto {
-        val entry = findAndCheckOwnership(user, id)
-        validateDateRange(request.availableFrom, request.availableTo)
-        checkOverlap(user, request.availableFrom, request.availableTo, excludeId = id)
-
-        entry.availableFrom = request.availableFrom
-        entry.availableTo = request.availableTo
-        return availabilityRepo.save(entry).toDto()
-    }
-
-    fun delete(
-        user: UserModel,
-        id: String,
-    ) {
-        val entry = findAndCheckOwnership(user, id)
-        availabilityRepo.delete(entry)
-    }
-
-    private fun findAndCheckOwnership(
-        user: UserModel,
-        id: String,
+        availableFrom: LocalDate,
+        availableTo: LocalDate,
     ): UserAvailabilityModel {
         val entry =
-            availabilityRepo.findById(id).orElseThrow {
-                EntryNotFoundException(
+            availabilityRepo.findByIdOrNull(id)
+                ?: throw EntryNotFoundException(
                     resource = "UserAvailability",
                     field = "id",
                     value = id,
                     errorCode = GlobalErrorCode.USER_AVAILABILITY_NOT_FOUND,
                     status = HttpStatus.NOT_FOUND,
                 )
-            }
-
         if (entry.user.id != user.id) {
             throw AccessDeniedException(
                 resource = "UserAvailability",
@@ -85,43 +75,50 @@ class UserAvailabilityService(
                 status = HttpStatus.FORBIDDEN,
             )
         }
-        return entry
-    }
 
-    private fun validateDateRange(
-        from: LocalDate,
-        to: LocalDate,
-    ) {
-        require(!to.isBefore(from)) { "availableTo must not be before availableFrom" }
-    }
+        require(!availableTo.isBefore(availableFrom)) { "availableTo must not be before availableFrom" }
 
-    private fun checkOverlap(
-        user: UserModel,
-        from: LocalDate,
-        to: LocalDate,
-        excludeId: String?,
-    ) {
         val overlaps =
             availabilityRepo
                 .findByUser(user)
-                .filter { it.id != excludeId }
-                .any { entry -> from.isBefore(entry.availableTo) && to.isAfter(entry.availableFrom) }
-
+                .filter { it.id != id }
+                .any { entry -> availableFrom.isBefore(entry.availableTo) && availableTo.isAfter(entry.availableFrom) }
         if (overlaps) {
             throw DuplicateEntryException(
                 resource = "UserAvailability",
                 field = "period",
-                value = "$from–$to",
+                value = "$availableFrom–$availableTo",
                 errorCode = GlobalErrorCode.USER_AVAILABILITY_OVERLAP,
                 status = HttpStatus.CONFLICT,
             )
         }
+
+        entry.availableFrom = availableFrom
+        entry.availableTo = availableTo
+        return availabilityRepo.save(entry)
     }
 
-    private fun UserAvailabilityModel.toDto() =
-        UserAvailabilityDto(
-            id = id,
-            availableFrom = availableFrom,
-            availableTo = availableTo,
-        )
+    fun delete(
+        user: UserModel,
+        id: String,
+    ) {
+        val entry =
+            availabilityRepo.findByIdOrNull(id)
+                ?: throw EntryNotFoundException(
+                    resource = "UserAvailability",
+                    field = "id",
+                    value = id,
+                    errorCode = GlobalErrorCode.USER_AVAILABILITY_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
+        if (entry.user.id != user.id) {
+            throw AccessDeniedException(
+                resource = "UserAvailability",
+                errorCode = GlobalErrorCode.USER_AVAILABILITY_ACCESS_DENIED,
+                status = HttpStatus.FORBIDDEN,
+            )
+        }
+
+        availabilityRepo.delete(entry)
+    }
 }

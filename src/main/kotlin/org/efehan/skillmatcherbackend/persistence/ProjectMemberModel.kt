@@ -8,6 +8,7 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import org.efehan.skillmatcherbackend.core.projectmember.ProjectMemberDto
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 import java.time.Instant
@@ -31,7 +32,17 @@ class ProjectMemberModel(
     var status: ProjectMemberStatus,
     @Column(name = "joined_date", nullable = false)
     val joinedDate: Instant,
-) : AuditingBaseEntity()
+) : AuditingBaseEntity() {
+    fun toDTO() =
+        ProjectMemberDto(
+            id = id,
+            userId = user.id,
+            userName = "${user.firstName} ${user.lastName}",
+            email = user.email,
+            status = status.name,
+            joinedDate = joinedDate,
+        )
+}
 
 @Repository
 interface ProjectMemberRepository : JpaRepository<ProjectMemberModel, String> {

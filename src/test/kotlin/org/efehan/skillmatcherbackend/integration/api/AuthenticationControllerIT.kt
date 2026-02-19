@@ -30,15 +30,15 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
         val password = "Secret-Password1!"
         val role = roleRepository.save(RoleModel("ADMIN", null))
         val user =
-            UserModel(
-                email = "test@example.com",
-                passwordHash = passwordEncoder.encode(password),
-                firstName = "Test",
-                lastName = "User",
-                role = role,
+            userRepository.save(
+                UserModel(
+                    email = "test@example.com",
+                    passwordHash = passwordEncoder.encode(password),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
             )
-        user.isEnabled = true
-        userRepository.save(user)
 
         val request = LoginRequest(email = "test@example.com", password = password)
 
@@ -78,16 +78,15 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
     fun `should return 401 when password is wrong`() {
         // given
         val role = roleRepository.save(RoleModel("ADMIN", null))
-        val user =
+        userRepository.save(
             UserModel(
                 email = "test@example.com",
                 passwordHash = passwordEncoder.encode("Secret-Password1!"),
                 firstName = "Test",
                 lastName = "User",
                 role = role,
-            )
-        user.isEnabled = true
-        userRepository.save(user)
+            ).apply { isEnabled = true },
+        )
 
         val request = LoginRequest(email = "test@example.com", password = "Wrong-Password1!")
 
@@ -105,16 +104,15 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
         // given
         val password = "Secret-Password1!"
         val role = roleRepository.save(RoleModel("ADMIN", null))
-        val user =
+        userRepository.save(
             UserModel(
                 email = "test@example.com",
                 passwordHash = passwordEncoder.encode(password),
                 firstName = "Test",
                 lastName = "User",
                 role = role,
-            )
-        user.isEnabled = false
-        userRepository.save(user)
+            ),
+        )
 
         val request = LoginRequest(email = "test@example.com", password = password)
 
@@ -158,39 +156,27 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
             }
     }
 
-    private fun createUserWithRefreshToken(
-        expiresAt: Instant = Instant.now().plus(7, ChronoUnit.DAYS),
-        revoked: Boolean = false,
-        tokenValue: String = "test-refresh-token",
-    ): Pair<UserModel, RefreshTokenModel> {
-        val role = roleRepository.save(RoleModel("ADMIN", null))
-        val user =
-            UserModel(
-                email = "test@example.com",
-                passwordHash = passwordEncoder.encode("Secret-Password1!"),
-                firstName = "Test",
-                lastName = "User",
-                role = role,
-            )
-        user.isEnabled = true
-        userRepository.save(user)
-
-        val refreshToken =
-            refreshTokenRepository.save(
-                RefreshTokenModel(
-                    tokenHash = jwtService.hashToken(tokenValue),
-                    user = user,
-                    expiresAt = expiresAt,
-                    revoked = revoked,
-                ),
-            )
-        return user to refreshToken
-    }
-
     @Test
     fun `should refresh token successfully when valid refresh token provided`() {
         // given
-        createUserWithRefreshToken()
+        val role = roleRepository.save(RoleModel("ADMIN", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "test@example.com",
+                    passwordHash = passwordEncoder.encode("Secret-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        refreshTokenRepository.save(
+            RefreshTokenModel(
+                tokenHash = jwtService.hashToken("test-refresh-token"),
+                user = user,
+                expiresAt = Instant.now().plus(7, ChronoUnit.DAYS),
+            ),
+        )
         val request = RefreshTokenRequest(refreshToken = "test-refresh-token")
 
         // when & then
@@ -213,8 +199,23 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return same refresh token when expiry is far away`() {
         // given - expires in 7 days, above 2-day threshold
-        createUserWithRefreshToken(
-            expiresAt = Instant.now().plus(7, ChronoUnit.DAYS),
+        val role = roleRepository.save(RoleModel("ADMIN", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "test@example.com",
+                    passwordHash = passwordEncoder.encode("Secret-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        refreshTokenRepository.save(
+            RefreshTokenModel(
+                tokenHash = jwtService.hashToken("test-refresh-token"),
+                user = user,
+                expiresAt = Instant.now().plus(7, ChronoUnit.DAYS),
+            ),
         )
         val request = RefreshTokenRequest(refreshToken = "test-refresh-token")
 
@@ -231,8 +232,23 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should rotate refresh token when expiry is below threshold`() {
         // given - expires in 1 day, below 2-day threshold
-        createUserWithRefreshToken(
-            expiresAt = Instant.now().plus(1, ChronoUnit.DAYS),
+        val role = roleRepository.save(RoleModel("ADMIN", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "test@example.com",
+                    passwordHash = passwordEncoder.encode("Secret-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        refreshTokenRepository.save(
+            RefreshTokenModel(
+                tokenHash = jwtService.hashToken("test-refresh-token"),
+                user = user,
+                expiresAt = Instant.now().plus(1, ChronoUnit.DAYS),
+            ),
         )
         val request = RefreshTokenRequest(refreshToken = "test-refresh-token")
 
@@ -266,7 +282,25 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 401 when refresh token is revoked`() {
         // given
-        createUserWithRefreshToken(revoked = true)
+        val role = roleRepository.save(RoleModel("ADMIN", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "test@example.com",
+                    passwordHash = passwordEncoder.encode("Secret-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        refreshTokenRepository.save(
+            RefreshTokenModel(
+                tokenHash = jwtService.hashToken("test-refresh-token"),
+                user = user,
+                expiresAt = Instant.now().plus(7, ChronoUnit.DAYS),
+                revoked = true,
+            ),
+        )
         val request = RefreshTokenRequest(refreshToken = "test-refresh-token")
 
         // when & then
@@ -282,8 +316,23 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 401 when refresh token is expired`() {
         // given
-        createUserWithRefreshToken(
-            expiresAt = Instant.now().minus(1, ChronoUnit.HOURS),
+        val role = roleRepository.save(RoleModel("ADMIN", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "test@example.com",
+                    passwordHash = passwordEncoder.encode("Secret-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        refreshTokenRepository.save(
+            RefreshTokenModel(
+                tokenHash = jwtService.hashToken("test-refresh-token"),
+                user = user,
+                expiresAt = Instant.now().minus(1, ChronoUnit.HOURS),
+            ),
         )
         val request = RefreshTokenRequest(refreshToken = "test-refresh-token")
 
@@ -297,26 +346,21 @@ class AuthenticationControllerIT : AbstractIntegrationTest() {
             }
     }
 
-    private fun createAuthenticatedUser(): Pair<UserModel, String> {
-        val role = roleRepository.save(RoleModel("ADMIN", null))
-        val user =
-            UserModel(
-                email = "test@example.com",
-                passwordHash = passwordEncoder.encode("Secret-Password1!"),
-                firstName = "Test",
-                lastName = "User",
-                role = role,
-            )
-        user.isEnabled = true
-        userRepository.save(user)
-        val accessToken = jwtService.generateAccessToken(user)
-        return user to accessToken
-    }
-
     @Test
     fun `should logout successfully and revoke all refresh tokens`() {
         // given
-        val (user, accessToken) = createAuthenticatedUser()
+        val role = roleRepository.save(RoleModel("ADMIN", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "test@example.com",
+                    passwordHash = passwordEncoder.encode("Secret-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val accessToken = jwtService.generateAccessToken(user)
         refreshTokenRepository.save(
             RefreshTokenModel(
                 tokenHash = jwtService.hashToken("token-1"),

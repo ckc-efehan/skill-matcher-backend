@@ -1,23 +1,20 @@
 package org.efehan.skillmatcherbackend.service
 
 import io.mockk.every
+import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.efehan.skillmatcherbackend.core.availability.CreateAvailabilityRequest
-import org.efehan.skillmatcherbackend.core.availability.UpdateAvailabilityRequest
 import org.efehan.skillmatcherbackend.core.availability.UserAvailabilityService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
-import org.efehan.skillmatcherbackend.persistence.RoleModel
-import org.efehan.skillmatcherbackend.persistence.UserAvailabilityModel
+import org.efehan.skillmatcherbackend.fixtures.builder.UserAvailabilityBuilder
+import org.efehan.skillmatcherbackend.fixtures.builder.UserBuilder
 import org.efehan.skillmatcherbackend.persistence.UserAvailabilityRepository
-import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
 import org.efehan.skillmatcherbackend.shared.exceptions.DuplicateEntryException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -30,88 +27,66 @@ class UserAvailabilityServiceTest {
     @MockK
     private lateinit var availabilityRepo: UserAvailabilityRepository
 
+    @InjectMockKs
     private lateinit var service: UserAvailabilityService
-
-    private val role = RoleModel("EMPLOYER", null)
-
-    private val user =
-        UserModel(
-            email = "user@firma.de",
-            passwordHash = "hashed",
-            firstName = "User",
-            lastName = "One",
-            role = role,
-        ).apply { isEnabled = true }
-
-    private val otherUser =
-        UserModel(
-            email = "other@firma.de",
-            passwordHash = "hashed",
-            firstName = "Other",
-            lastName = "User",
-            role = role,
-        ).apply { isEnabled = true }
-
-    @BeforeEach
-    fun setUp() {
-        service = UserAvailabilityService(availabilityRepo)
-    }
-
-    // ── create ───────────────────────────────────────────────────────────
 
     @Test
     fun `create saves and returns availability entry`() {
         // given
-        val request =
-            CreateAvailabilityRequest(
-                availableFrom = LocalDate.of(2026, 3, 1),
-                availableTo = LocalDate.of(2026, 6, 1),
-            )
+        val user = UserBuilder().build()
         every { availabilityRepo.findByUser(user) } returns emptyList()
         every { availabilityRepo.save(any()) } returnsArgument 0
 
         // when
-        val result = service.create(user, request)
+        val result =
+            service.create(
+                user = user,
+                availableFrom = LocalDate.of(2026, 3, 1),
+                availableTo = LocalDate.of(2026, 6, 1),
+            )
 
         // then
         assertThat(result.availableFrom).isEqualTo(LocalDate.of(2026, 3, 1))
         assertThat(result.availableTo).isEqualTo(LocalDate.of(2026, 6, 1))
+        assertThat(result.user).isEqualTo(user)
         verify(exactly = 1) { availabilityRepo.save(any()) }
     }
 
     @Test
     fun `create throws when availableTo is before availableFrom`() {
         // given
-        val request =
-            CreateAvailabilityRequest(
+        val user = UserBuilder().build()
+
+        // then
+        assertThatThrownBy {
+            service.create(
+                user = user,
                 availableFrom = LocalDate.of(2026, 6, 1),
                 availableTo = LocalDate.of(2026, 3, 1),
             )
-
-        // then
-        assertThatThrownBy { service.create(user, request) }
-            .isInstanceOf(IllegalArgumentException::class.java)
+        }.isInstanceOf(IllegalArgumentException::class.java)
     }
 
     @Test
     fun `create throws DuplicateEntryException when period overlaps`() {
         // given
+        val user = UserBuilder().build()
         val existing =
-            UserAvailabilityModel(
+            UserAvailabilityBuilder().build(
                 user = user,
                 availableFrom = LocalDate.of(2026, 4, 1),
                 availableTo = LocalDate.of(2026, 7, 1),
             )
-        val request =
-            CreateAvailabilityRequest(
-                availableFrom = LocalDate.of(2026, 3, 1),
-                availableTo = LocalDate.of(2026, 5, 1),
-            )
         every { availabilityRepo.findByUser(user) } returns listOf(existing)
 
         // then
-        assertThatThrownBy { service.create(user, request) }
-            .isInstanceOf(DuplicateEntryException::class.java)
+        assertThatThrownBy {
+            service.create(
+                user = user,
+                availableFrom = LocalDate.of(2026, 3, 1),
+                availableTo = LocalDate.of(2026, 5, 1),
+            )
+        }.isInstanceOf(DuplicateEntryException::class.java)
             .satisfies({ ex ->
                 val e = ex as DuplicateEntryException
                 assertThat(e.errorCode).isEqualTo(GlobalErrorCode.USER_AVAILABILITY_OVERLAP)
@@ -121,40 +96,40 @@ class UserAvailabilityServiceTest {
     @Test
     fun `create succeeds when periods do not overlap`() {
         // given
+        val user = UserBuilder().build()
         val existing =
-            UserAvailabilityModel(
+            UserAvailabilityBuilder().build(
                 user = user,
                 availableFrom = LocalDate.of(2026, 1, 1),
                 availableTo = LocalDate.of(2026, 3, 1),
-            )
-        val request =
-            CreateAvailabilityRequest(
-                availableFrom = LocalDate.of(2026, 3, 1),
-                availableTo = LocalDate.of(2026, 6, 1),
             )
         every { availabilityRepo.findByUser(user) } returns listOf(existing)
         every { availabilityRepo.save(any()) } returnsArgument 0
 
         // when
-        val result = service.create(user, request)
+        val result =
+            service.create(
+                user = user,
+                availableFrom = LocalDate.of(2026, 3, 1),
+                availableTo = LocalDate.of(2026, 6, 1),
+            )
 
         // then
         assertThat(result.availableFrom).isEqualTo(LocalDate.of(2026, 3, 1))
     }
 
-    // ── getAll ───────────────────────────────────────────────────────────
-
     @Test
     fun `getAll returns entries sorted by availableFrom`() {
         // given
+        val user = UserBuilder().build()
         val entry1 =
-            UserAvailabilityModel(
+            UserAvailabilityBuilder().build(
                 user = user,
                 availableFrom = LocalDate.of(2026, 6, 1),
                 availableTo = LocalDate.of(2026, 9, 1),
             )
         val entry2 =
-            UserAvailabilityModel(
+            UserAvailabilityBuilder().build(
                 user = user,
                 availableFrom = LocalDate.of(2026, 1, 1),
                 availableTo = LocalDate.of(2026, 3, 1),
@@ -173,6 +148,7 @@ class UserAvailabilityServiceTest {
     @Test
     fun `getAll returns empty list when no entries exist`() {
         // given
+        val user = UserBuilder().build()
         every { availabilityRepo.findByUser(user) } returns emptyList()
 
         // when
@@ -182,28 +158,23 @@ class UserAvailabilityServiceTest {
         assertThat(result).isEmpty()
     }
 
-    // ── update ───────────────────────────────────────────────────────────
-
     @Test
     fun `update changes dates and returns updated entry`() {
         // given
-        val entry =
-            UserAvailabilityModel(
-                user = user,
-                availableFrom = LocalDate.of(2026, 3, 1),
-                availableTo = LocalDate.of(2026, 6, 1),
-            )
-        val request =
-            UpdateAvailabilityRequest(
-                availableFrom = LocalDate.of(2026, 4, 1),
-                availableTo = LocalDate.of(2026, 7, 1),
-            )
+        val user = UserBuilder().build()
+        val entry = UserAvailabilityBuilder().build(user = user)
         every { availabilityRepo.findById(entry.id) } returns Optional.of(entry)
         every { availabilityRepo.findByUser(user) } returns listOf(entry)
         every { availabilityRepo.save(any()) } returnsArgument 0
 
         // when
-        val result = service.update(user, entry.id, request)
+        val result =
+            service.update(
+                user = user,
+                id = entry.id,
+                availableFrom = LocalDate.of(2026, 4, 1),
+                availableTo = LocalDate.of(2026, 7, 1),
+            )
 
         // then
         assertThat(result.availableFrom).isEqualTo(LocalDate.of(2026, 4, 1))
@@ -214,16 +185,18 @@ class UserAvailabilityServiceTest {
     @Test
     fun `update throws EntryNotFoundException when entry not found`() {
         // given
-        val request =
-            UpdateAvailabilityRequest(
-                availableFrom = LocalDate.of(2026, 4, 1),
-                availableTo = LocalDate.of(2026, 7, 1),
-            )
+        val user = UserBuilder().build()
         every { availabilityRepo.findById("nonexistent") } returns Optional.empty()
 
         // then
-        assertThatThrownBy { service.update(user, "nonexistent", request) }
-            .isInstanceOf(EntryNotFoundException::class.java)
+        assertThatThrownBy {
+            service.update(
+                user = user,
+                id = "nonexistent",
+                availableFrom = LocalDate.of(2026, 4, 1),
+                availableTo = LocalDate.of(2026, 7, 1),
+            )
+        }.isInstanceOf(EntryNotFoundException::class.java)
             .satisfies({ ex ->
                 val e = ex as EntryNotFoundException
                 assertThat(e.errorCode).isEqualTo(GlobalErrorCode.USER_AVAILABILITY_NOT_FOUND)
@@ -233,22 +206,20 @@ class UserAvailabilityServiceTest {
     @Test
     fun `update throws AccessDeniedException when entry belongs to other user`() {
         // given
-        val entry =
-            UserAvailabilityModel(
-                user = otherUser,
-                availableFrom = LocalDate.of(2026, 3, 1),
-                availableTo = LocalDate.of(2026, 6, 1),
-            )
-        val request =
-            UpdateAvailabilityRequest(
-                availableFrom = LocalDate.of(2026, 4, 1),
-                availableTo = LocalDate.of(2026, 7, 1),
-            )
+        val user = UserBuilder().build()
+        val otherUser = UserBuilder().build(email = "other@firma.de", firstName = "Other", lastName = "User")
+        val entry = UserAvailabilityBuilder().build(user = otherUser)
         every { availabilityRepo.findById(entry.id) } returns Optional.of(entry)
 
         // then
-        assertThatThrownBy { service.update(user, entry.id, request) }
-            .isInstanceOf(AccessDeniedException::class.java)
+        assertThatThrownBy {
+            service.update(
+                user = user,
+                id = entry.id,
+                availableFrom = LocalDate.of(2026, 4, 1),
+                availableTo = LocalDate.of(2026, 7, 1),
+            )
+        }.isInstanceOf(AccessDeniedException::class.java)
             .satisfies({ ex ->
                 val e = ex as AccessDeniedException
                 assertThat(e.errorCode).isEqualTo(GlobalErrorCode.USER_AVAILABILITY_ACCESS_DENIED)
@@ -258,46 +229,42 @@ class UserAvailabilityServiceTest {
     @Test
     fun `update throws DuplicateEntryException when new dates overlap with other entry`() {
         // given
+        val user = UserBuilder().build()
         val entry =
-            UserAvailabilityModel(
+            UserAvailabilityBuilder().build(
                 user = user,
                 availableFrom = LocalDate.of(2026, 1, 1),
                 availableTo = LocalDate.of(2026, 3, 1),
             )
         val otherEntry =
-            UserAvailabilityModel(
+            UserAvailabilityBuilder().build(
                 user = user,
                 availableFrom = LocalDate.of(2026, 5, 1),
                 availableTo = LocalDate.of(2026, 8, 1),
-            )
-        val request =
-            UpdateAvailabilityRequest(
-                availableFrom = LocalDate.of(2026, 4, 1),
-                availableTo = LocalDate.of(2026, 6, 1),
             )
         every { availabilityRepo.findById(entry.id) } returns Optional.of(entry)
         every { availabilityRepo.findByUser(user) } returns listOf(entry, otherEntry)
 
         // then
-        assertThatThrownBy { service.update(user, entry.id, request) }
-            .isInstanceOf(DuplicateEntryException::class.java)
+        assertThatThrownBy {
+            service.update(
+                user = user,
+                id = entry.id,
+                availableFrom = LocalDate.of(2026, 4, 1),
+                availableTo = LocalDate.of(2026, 6, 1),
+            )
+        }.isInstanceOf(DuplicateEntryException::class.java)
             .satisfies({ ex ->
                 val e = ex as DuplicateEntryException
                 assertThat(e.errorCode).isEqualTo(GlobalErrorCode.USER_AVAILABILITY_OVERLAP)
             })
     }
 
-    // ── delete ───────────────────────────────────────────────────────────
-
     @Test
     fun `delete removes entry`() {
         // given
-        val entry =
-            UserAvailabilityModel(
-                user = user,
-                availableFrom = LocalDate.of(2026, 3, 1),
-                availableTo = LocalDate.of(2026, 6, 1),
-            )
+        val user = UserBuilder().build()
+        val entry = UserAvailabilityBuilder().build(user = user)
         every { availabilityRepo.findById(entry.id) } returns Optional.of(entry)
         every { availabilityRepo.delete(entry) } returns Unit
 
@@ -311,6 +278,7 @@ class UserAvailabilityServiceTest {
     @Test
     fun `delete throws EntryNotFoundException when entry not found`() {
         // given
+        val user = UserBuilder().build()
         every { availabilityRepo.findById("nonexistent") } returns Optional.empty()
 
         // then
@@ -321,12 +289,9 @@ class UserAvailabilityServiceTest {
     @Test
     fun `delete throws AccessDeniedException when entry belongs to other user`() {
         // given
-        val entry =
-            UserAvailabilityModel(
-                user = otherUser,
-                availableFrom = LocalDate.of(2026, 3, 1),
-                availableTo = LocalDate.of(2026, 6, 1),
-            )
+        val user = UserBuilder().build()
+        val otherUser = UserBuilder().build(email = "other@firma.de", firstName = "Other", lastName = "User")
+        val entry = UserAvailabilityBuilder().build(user = otherUser)
         every { availabilityRepo.findById(entry.id) } returns Optional.of(entry)
 
         // then

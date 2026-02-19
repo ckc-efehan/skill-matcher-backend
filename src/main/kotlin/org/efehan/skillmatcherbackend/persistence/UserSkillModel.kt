@@ -6,6 +6,7 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import org.efehan.skillmatcherbackend.core.skill.UserSkillDto
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
@@ -26,7 +27,14 @@ class UserSkillModel(
     val skill: SkillModel,
     @Column(nullable = false)
     var level: Int,
-) : AuditingBaseEntity()
+) : AuditingBaseEntity() {
+    fun toDTO() =
+        UserSkillDto(
+            id = id,
+            name = skill.name,
+            level = level,
+        )
+}
 
 @Repository
 interface UserSkillRepository : JpaRepository<UserSkillModel, String> {

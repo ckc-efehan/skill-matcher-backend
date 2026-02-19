@@ -1,34 +1,29 @@
 package org.efehan.skillmatcherbackend.service
 
 import io.mockk.every
+import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.verify
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.efehan.skillmatcherbackend.core.project.CreateProjectRequest
 import org.efehan.skillmatcherbackend.core.project.ProjectService
-import org.efehan.skillmatcherbackend.core.project.UpdateProjectRequest
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
-import org.efehan.skillmatcherbackend.persistence.ProjectMemberModel
+import org.efehan.skillmatcherbackend.fixtures.builder.ProjectBuilder
+import org.efehan.skillmatcherbackend.fixtures.builder.ProjectMemberBuilder
+import org.efehan.skillmatcherbackend.fixtures.builder.SkillBuilder
+import org.efehan.skillmatcherbackend.fixtures.builder.UserBuilder
 import org.efehan.skillmatcherbackend.persistence.ProjectMemberRepository
-import org.efehan.skillmatcherbackend.persistence.ProjectMemberStatus
 import org.efehan.skillmatcherbackend.persistence.ProjectModel
 import org.efehan.skillmatcherbackend.persistence.ProjectRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectSkillModel
 import org.efehan.skillmatcherbackend.persistence.ProjectSkillRepository
 import org.efehan.skillmatcherbackend.persistence.ProjectStatus
-import org.efehan.skillmatcherbackend.persistence.RoleModel
-import org.efehan.skillmatcherbackend.persistence.SkillModel
-import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import java.time.Instant
-import java.time.LocalDate
 import java.util.Optional
 
 @ExtendWith(MockKExtension::class)
@@ -43,72 +38,51 @@ class ProjectServiceTest {
     @MockK
     private lateinit var projectMemberRepo: ProjectMemberRepository
 
+    @InjectMockKs
     private lateinit var projectService: ProjectService
-
-    private val role = RoleModel("PROJECTMANAGER", null)
-
-    private val owner =
-        UserModel(
-            email = "max@firma.de",
-            passwordHash = "hashed",
-            firstName = "Max",
-            lastName = "Mustermann",
-            role = role,
-        )
-
-    private val otherUser =
-        UserModel(
-            email = "other@firma.de",
-            passwordHash = "hashed",
-            firstName = "Other",
-            lastName = "User",
-            role = role,
-        )
-
-    @BeforeEach
-    fun setUp() {
-        projectService = ProjectService(projectRepo, projectSkillRepo, projectMemberRepo)
-    }
 
     @Test
     fun `createProject saves and returns project with status PLANNED`() {
         // given
-        val request =
-            CreateProjectRequest(
-                name = "Skill Matcher",
-                description = "Internal tool",
-                startDate = LocalDate.of(2026, 3, 1),
-                endDate = LocalDate.of(2026, 9, 1),
-                maxMembers = 5,
-            )
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.save(any()) } returnsArgument 0
 
         // when
-        val result = projectService.createProject(owner, request)
+        val result =
+            projectService.createProject(
+                owner = owner,
+                name = project.name,
+                description = project.description,
+                startDate = project.startDate,
+                endDate = project.endDate,
+                maxMembers = project.maxMembers,
+            )
 
         // then
-        assertThat(result.name).isEqualTo("Skill Matcher")
-        assertThat(result.description).isEqualTo("Internal tool")
-        assertThat(result.status).isEqualTo("PLANNED")
-        assertThat(result.startDate).isEqualTo(LocalDate.of(2026, 3, 1))
-        assertThat(result.endDate).isEqualTo(LocalDate.of(2026, 9, 1))
-        assertThat(result.maxMembers).isEqualTo(5)
-        assertThat(result.ownerName).isEqualTo("Max Mustermann")
+        assertThat(result.name).isEqualTo(project.name)
+        assertThat(result.description).isEqualTo(project.description)
+        assertThat(result.status).isEqualTo(ProjectStatus.PLANNED)
+        assertThat(result.startDate).isEqualTo(project.startDate)
+        assertThat(result.endDate).isEqualTo(project.endDate)
+        assertThat(result.maxMembers).isEqualTo(project.maxMembers)
+        assertThat(result.owner).isEqualTo(owner)
         verify(exactly = 1) { projectRepo.save(any()) }
     }
 
     @Test
     fun `getProject returns project when found`() {
         // given
-        val project = buildProject(owner)
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
 
         // when
         val result = projectService.getProject(project.id)
 
         // then
-        assertThat(result.name).isEqualTo("Skill Matcher")
-        assertThat(result.ownerName).isEqualTo("Max Mustermann")
+        assertThat(result.name).isEqualTo(project.name)
+        assertThat(result.owner).isEqualTo(owner)
     }
 
     @Test
@@ -129,8 +103,9 @@ class ProjectServiceTest {
     @Test
     fun `getAllProjects returns all projects`() {
         // given
-        val project1 = buildProject(owner)
-        val project2 = buildProject(owner, name = "Another Project")
+        val owner = UserBuilder().build()
+        val project1 = ProjectBuilder().build(owner = owner)
+        val project2 = ProjectBuilder().build(owner = owner, name = "Another Project")
         every { projectRepo.findAll() } returns listOf(project1, project2)
 
         // when
@@ -138,8 +113,8 @@ class ProjectServiceTest {
 
         // then
         assertThat(result).hasSize(2)
-        assertThat(result[0].name).isEqualTo("Skill Matcher")
-        assertThat(result[1].name).isEqualTo("Another Project")
+        assertThat(result[0].name).isEqualTo(project1.name)
+        assertThat(result[1].name).isEqualTo(project2.name)
     }
 
     @Test
@@ -157,49 +132,63 @@ class ProjectServiceTest {
     @Test
     fun `updateProject updates and returns project when owner`() {
         // given
-        val project = buildProject(owner)
-        val request =
-            UpdateProjectRequest(
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
+        val updated =
+            ProjectBuilder().build(
+                owner = owner,
                 name = "Updated Name",
                 description = "Updated description",
-                status = "ACTIVE",
-                startDate = LocalDate.of(2026, 4, 1),
-                endDate = LocalDate.of(2026, 12, 1),
+                status = ProjectStatus.ACTIVE,
+                startDate = project.startDate.plusMonths(1),
+                endDate = project.endDate.plusMonths(3),
                 maxMembers = 8,
             )
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { projectRepo.save(any()) } returnsArgument 0
 
         // when
-        val result = projectService.updateProject(owner, project.id, request)
+        val result =
+            projectService.updateProject(
+                user = owner,
+                projectId = project.id,
+                name = updated.name,
+                description = updated.description,
+                status = updated.status,
+                startDate = updated.startDate,
+                endDate = updated.endDate,
+                maxMembers = updated.maxMembers,
+            )
 
         // then
-        assertThat(result.name).isEqualTo("Updated Name")
-        assertThat(result.description).isEqualTo("Updated description")
-        assertThat(result.status).isEqualTo("ACTIVE")
-        assertThat(result.startDate).isEqualTo(LocalDate.of(2026, 4, 1))
-        assertThat(result.endDate).isEqualTo(LocalDate.of(2026, 12, 1))
-        assertThat(result.maxMembers).isEqualTo(8)
+        assertThat(result.name).isEqualTo(updated.name)
+        assertThat(result.description).isEqualTo(updated.description)
+        assertThat(result.status).isEqualTo(updated.status)
+        assertThat(result.startDate).isEqualTo(updated.startDate)
+        assertThat(result.endDate).isEqualTo(updated.endDate)
+        assertThat(result.maxMembers).isEqualTo(updated.maxMembers)
         verify(exactly = 1) { projectRepo.save(any()) }
     }
 
     @Test
     fun `updateProject throws EntryNotFoundException when project not found`() {
         // given
-        val request =
-            UpdateProjectRequest(
-                name = "Updated",
-                description = "Updated",
-                status = "ACTIVE",
-                startDate = LocalDate.of(2026, 4, 1),
-                endDate = LocalDate.of(2026, 12, 1),
-                maxMembers = 8,
-            )
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById("nonexistent") } returns Optional.empty()
 
         // then
         assertThatThrownBy {
-            projectService.updateProject(owner, "nonexistent", request)
+            projectService.updateProject(
+                user = owner,
+                projectId = "nonexistent",
+                name = project.name,
+                description = project.description,
+                status = project.status,
+                startDate = project.startDate,
+                endDate = project.endDate,
+                maxMembers = project.maxMembers,
+            )
         }.isInstanceOf(EntryNotFoundException::class.java)
             .satisfies({ ex ->
                 val e = ex as EntryNotFoundException
@@ -212,21 +201,23 @@ class ProjectServiceTest {
     @Test
     fun `updateProject throws AccessDeniedException when not owner`() {
         // given
-        val project = buildProject(owner)
-        val request =
-            UpdateProjectRequest(
-                name = "Updated",
-                description = "Updated",
-                status = "ACTIVE",
-                startDate = LocalDate.of(2026, 4, 1),
-                endDate = LocalDate.of(2026, 12, 1),
-                maxMembers = 8,
-            )
+        val owner = UserBuilder().build()
+        val otherUser = UserBuilder().build(email = "other@firma.de", firstName = "Other", lastName = "User")
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
 
         // then
         assertThatThrownBy {
-            projectService.updateProject(otherUser, project.id, request)
+            projectService.updateProject(
+                user = otherUser,
+                projectId = project.id,
+                name = project.name,
+                description = project.description,
+                status = project.status,
+                startDate = project.startDate,
+                endDate = project.endDate,
+                maxMembers = project.maxMembers,
+            )
         }.isInstanceOf(AccessDeniedException::class.java)
             .satisfies({ ex ->
                 val e = ex as AccessDeniedException
@@ -239,15 +230,10 @@ class ProjectServiceTest {
     @Test
     fun `deleteProject deletes project and its skills when owner`() {
         // given
-        val project = buildProject(owner)
-        val projectMember =
-            ProjectMemberModel(
-                project = project,
-                user = owner,
-                status = ProjectMemberStatus.ACTIVE,
-                joinedDate = Instant.now(),
-            )
-        val skill = SkillModel(name = "kotlin")
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
+        val projectMember = ProjectMemberBuilder().build(project = project, user = owner)
+        val skill = SkillBuilder().build()
         val projectSkill = ProjectSkillModel(project = project, skill = skill, level = 3)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { projectMemberRepo.findByProject(project) } returns listOf(projectMember)
@@ -268,7 +254,8 @@ class ProjectServiceTest {
     @Test
     fun `deleteProject works when project has no skills`() {
         // given
-        val project = buildProject(owner)
+        val owner = UserBuilder().build()
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
         every { projectMemberRepo.findByProject(project) } returns emptyList()
         every { projectMemberRepo.deleteAll(emptyList()) } returns Unit
@@ -292,7 +279,7 @@ class ProjectServiceTest {
 
         // then
         assertThatThrownBy {
-            projectService.deleteProject(owner, "nonexistent")
+            projectService.deleteProject(UserBuilder().build(), "nonexistent")
         }.isInstanceOf(EntryNotFoundException::class.java)
             .satisfies({ ex ->
                 val e = ex as EntryNotFoundException
@@ -305,7 +292,9 @@ class ProjectServiceTest {
     @Test
     fun `deleteProject throws AccessDeniedException when not owner`() {
         // given
-        val project = buildProject(owner)
+        val owner = UserBuilder().build()
+        val otherUser = UserBuilder().build(email = "other@firma.de", firstName = "Other", lastName = "User")
+        val project = ProjectBuilder().build(owner = owner)
         every { projectRepo.findById(project.id) } returns Optional.of(project)
 
         // then
@@ -319,18 +308,4 @@ class ProjectServiceTest {
 
         verify(exactly = 0) { projectRepo.delete(any<ProjectModel>()) }
     }
-
-    private fun buildProject(
-        projectOwner: UserModel,
-        name: String = "Skill Matcher",
-    ): ProjectModel =
-        ProjectModel(
-            name = name,
-            description = "Internal tool",
-            status = ProjectStatus.PLANNED,
-            startDate = LocalDate.of(2026, 3, 1),
-            endDate = LocalDate.of(2026, 9, 1),
-            maxMembers = 5,
-            owner = projectOwner,
-        )
 }

@@ -24,39 +24,27 @@ class InvitationControllerIT : AbstractIntegrationTest() {
     @Autowired
     private lateinit var jwtService: JwtService
 
-    private fun createInvitedUser(
-        expiresAt: Instant = Instant.now().plus(72, ChronoUnit.HOURS),
-        used: Boolean = false,
-        tokenValue: String = "test-invitation-token",
-    ): Pair<UserModel, InvitationTokenModel> {
-        val role = roleRepository.save(RoleModel("EMPLOYER", null))
-        val user =
-            UserModel(
-                email = "max@firma.de",
-                passwordHash = null,
-                firstName = null,
-                lastName = null,
-                role = role,
-            )
-        user.isEnabled = false
-        userRepository.save(user)
-
-        val invitation =
-            invitationTokenRepository.save(
-                InvitationTokenModel(
-                    tokenHash = jwtService.hashToken(tokenValue),
-                    user = user,
-                    expiresAt = expiresAt,
-                    used = used,
-                ),
-            )
-        return user to invitation
-    }
-
     @Test
     fun `should validate invitation with valid token`() {
         // given
-        createInvitedUser()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = null,
+                    firstName = null,
+                    lastName = null,
+                    role = role,
+                ),
+            )
+        invitationTokenRepository.save(
+            InvitationTokenModel(
+                tokenHash = jwtService.hashToken("test-invitation-token"),
+                user = user,
+                expiresAt = Instant.now().plus(72, ChronoUnit.HOURS),
+            ),
+        )
         val request = ValidateInvitationRequest(token = "test-invitation-token")
 
         // when & then
@@ -88,7 +76,24 @@ class InvitationControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 400 when validating expired token`() {
         // given
-        createInvitedUser(expiresAt = Instant.now().minus(1, ChronoUnit.HOURS))
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = null,
+                    firstName = null,
+                    lastName = null,
+                    role = role,
+                ),
+            )
+        invitationTokenRepository.save(
+            InvitationTokenModel(
+                tokenHash = jwtService.hashToken("test-invitation-token"),
+                user = user,
+                expiresAt = Instant.now().minus(1, ChronoUnit.HOURS),
+            ),
+        )
         val request = ValidateInvitationRequest(token = "test-invitation-token")
 
         // when & then
@@ -104,7 +109,25 @@ class InvitationControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 400 when validating already used token`() {
         // given
-        createInvitedUser(used = true)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = null,
+                    firstName = null,
+                    lastName = null,
+                    role = role,
+                ),
+            )
+        invitationTokenRepository.save(
+            InvitationTokenModel(
+                tokenHash = jwtService.hashToken("test-invitation-token"),
+                user = user,
+                expiresAt = Instant.now().plus(72, ChronoUnit.HOURS),
+                used = true,
+            ),
+        )
         val request = ValidateInvitationRequest(token = "test-invitation-token")
 
         // when & then
@@ -120,7 +143,24 @@ class InvitationControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should accept invitation with valid token and return auth response`() {
         // given
-        createInvitedUser()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = null,
+                    firstName = null,
+                    lastName = null,
+                    role = role,
+                ),
+            )
+        invitationTokenRepository.save(
+            InvitationTokenModel(
+                tokenHash = jwtService.hashToken("test-invitation-token"),
+                user = user,
+                expiresAt = Instant.now().plus(72, ChronoUnit.HOURS),
+            ),
+        )
         val request =
             AcceptInvitationRequest(
                 token = "test-invitation-token",
@@ -176,7 +216,24 @@ class InvitationControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 400 for expired token`() {
         // given
-        createInvitedUser(expiresAt = Instant.now().minus(1, ChronoUnit.HOURS))
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = null,
+                    firstName = null,
+                    lastName = null,
+                    role = role,
+                ),
+            )
+        invitationTokenRepository.save(
+            InvitationTokenModel(
+                tokenHash = jwtService.hashToken("test-invitation-token"),
+                user = user,
+                expiresAt = Instant.now().minus(1, ChronoUnit.HOURS),
+            ),
+        )
         val request =
             AcceptInvitationRequest(
                 token = "test-invitation-token",
@@ -198,7 +255,25 @@ class InvitationControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 400 for already used token`() {
         // given
-        createInvitedUser(used = true)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = null,
+                    firstName = null,
+                    lastName = null,
+                    role = role,
+                ),
+            )
+        invitationTokenRepository.save(
+            InvitationTokenModel(
+                tokenHash = jwtService.hashToken("test-invitation-token"),
+                user = user,
+                expiresAt = Instant.now().plus(72, ChronoUnit.HOURS),
+                used = true,
+            ),
+        )
         val request =
             AcceptInvitationRequest(
                 token = "test-invitation-token",
@@ -220,7 +295,24 @@ class InvitationControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 400 for weak password`() {
         // given
-        createInvitedUser()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "max@firma.de",
+                    passwordHash = null,
+                    firstName = null,
+                    lastName = null,
+                    role = role,
+                ),
+            )
+        invitationTokenRepository.save(
+            InvitationTokenModel(
+                tokenHash = jwtService.hashToken("test-invitation-token"),
+                user = user,
+                expiresAt = Instant.now().plus(72, ChronoUnit.HOURS),
+            ),
+        )
         val request =
             AcceptInvitationRequest(
                 token = "test-invitation-token",
@@ -238,15 +330,24 @@ class InvitationControllerIT : AbstractIntegrationTest() {
             }
 
         // verify user was NOT activated
-        val user = userRepository.findByEmail("max@firma.de")!!
-        assertThat(user.isEnabled).isFalse()
-        assertThat(user.passwordHash).isNull()
+        val unchangedUser = userRepository.findByEmail("max@firma.de")!!
+        assertThat(unchangedUser.isEnabled).isFalse()
+        assertThat(unchangedUser.passwordHash).isNull()
     }
 
     @Test
     fun `should not allow login before invitation is accepted`() {
         // given
-        createInvitedUser()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        userRepository.save(
+            UserModel(
+                email = "max@firma.de",
+                passwordHash = null,
+                firstName = null,
+                lastName = null,
+                role = role,
+            ),
+        )
 
         // when & then - try to login with the user that hasn't accepted yet
         mockMvc

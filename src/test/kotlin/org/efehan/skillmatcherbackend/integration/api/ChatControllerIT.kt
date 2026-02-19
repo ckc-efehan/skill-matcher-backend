@@ -2,6 +2,7 @@ package org.efehan.skillmatcherbackend.integration.api
 
 import org.efehan.skillmatcherbackend.core.auth.JwtService
 import org.efehan.skillmatcherbackend.core.chat.CreateConversationRequest
+import org.efehan.skillmatcherbackend.fixtures.requests.ChatFixtures
 import org.efehan.skillmatcherbackend.persistence.ChatMessageModel
 import org.efehan.skillmatcherbackend.persistence.ConversationModel
 import org.efehan.skillmatcherbackend.persistence.RoleModel
@@ -23,56 +24,41 @@ class ChatControllerIT : AbstractIntegrationTest() {
     @Autowired
     private lateinit var jwtService: JwtService
 
-    private fun createUserAndGetToken(
-        email: String = "alice@firma.de",
-        firstName: String = "Alice",
-        lastName: String = "Schmidt",
-    ): Pair<UserModel, String> {
-        val role = roleRepository.findAll().firstOrNull() ?: roleRepository.save(RoleModel("EMPLOYER", null))
-        val user =
-            UserModel(
-                email = email,
-                passwordHash = passwordEncoder.encode("Test-Password1!"),
-                firstName = firstName,
-                lastName = lastName,
-                role = role,
-            )
-        user.isEnabled = true
-        userRepository.save(user)
-        return user to jwtService.generateAccessToken(user)
-    }
-
-    private fun createConversation(
-        userOne: UserModel,
-        userTwo: UserModel,
-    ): ConversationModel {
-        val first = if (userOne.id < userTwo.id) userOne else userTwo
-        val second = if (userOne.id < userTwo.id) userTwo else userOne
-        return conversationRepository.save(ConversationModel(userOne = first, userTwo = second))
-    }
-
-    private fun createMessage(
-        conversation: ConversationModel,
-        sender: UserModel,
-        content: String,
-        sentAt: Instant = Instant.now(),
-    ): ChatMessageModel =
-        chatMessageRepository.save(
-            ChatMessageModel(
-                conversation = conversation,
-                sender = sender,
-                content = content,
-                sentAt = sentAt,
-            ),
-        )
-
     @Test
     fun `should return conversations for authenticated user`() {
         // given
-        val (alice, tokenAlice) = createUserAndGetToken()
-        val (bob, _) = createUserAndGetToken(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
-        val conversation = createConversation(alice, bob)
-        createMessage(conversation, alice, "Hello Bob!")
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val alice =
+            userRepository.save(
+                UserModel(
+                    email = "alice@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Alice",
+                    lastName = "Schmidt",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val bob =
+            userRepository.save(
+                UserModel(
+                    email = "bob@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Bob",
+                    lastName = "Mueller",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val tokenAlice = jwtService.generateAccessToken(alice)
+        val (first, second) = if (alice.id < bob.id) alice to bob else bob to alice
+        val conversation = conversationRepository.save(ConversationModel(userOne = first, userTwo = second))
+        chatMessageRepository.save(
+            ChatMessageModel(
+                conversation = conversation,
+                sender = alice,
+                content = "Hello Bob!",
+                sentAt = Instant.now(),
+            ),
+        )
 
         // when & then
         mockMvc
@@ -91,7 +77,18 @@ class ChatControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return empty list when user has no conversations`() {
         // given
-        val (_, token) = createUserAndGetToken()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "alice@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Alice",
+                    lastName = "Schmidt",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
 
         // when & then
         mockMvc
@@ -116,12 +113,37 @@ class ChatControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return messages for conversation member`() {
         // given
-        val (alice, tokenAlice) = createUserAndGetToken()
-        val (bob, _) = createUserAndGetToken(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
-        val conversation = createConversation(alice, bob)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val alice =
+            userRepository.save(
+                UserModel(
+                    email = "alice@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Alice",
+                    lastName = "Schmidt",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val bob =
+            userRepository.save(
+                UserModel(
+                    email = "bob@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Bob",
+                    lastName = "Mueller",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val tokenAlice = jwtService.generateAccessToken(alice)
+        val (first, second) = if (alice.id < bob.id) alice to bob else bob to alice
+        val conversation = conversationRepository.save(ConversationModel(userOne = first, userTwo = second))
         val sentAt = Instant.parse("2026-01-15T10:00:00Z")
-        createMessage(conversation, alice, "Hello", sentAt)
-        createMessage(conversation, bob, "Hi there", sentAt.plusSeconds(60))
+        chatMessageRepository.save(
+            ChatMessageModel(conversation = conversation, sender = alice, content = "Hello", sentAt = sentAt),
+        )
+        chatMessageRepository.save(
+            ChatMessageModel(conversation = conversation, sender = bob, content = "Hi there", sentAt = sentAt.plusSeconds(60)),
+        )
 
         // when & then
         mockMvc
@@ -139,13 +161,40 @@ class ChatControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should support cursor-based pagination with before param`() {
         // given
-        val (alice, tokenAlice) = createUserAndGetToken()
-        val (bob, _) = createUserAndGetToken(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
-        val conversation = createConversation(alice, bob)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val alice =
+            userRepository.save(
+                UserModel(
+                    email = "alice@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Alice",
+                    lastName = "Schmidt",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val bob =
+            userRepository.save(
+                UserModel(
+                    email = "bob@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Bob",
+                    lastName = "Mueller",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val tokenAlice = jwtService.generateAccessToken(alice)
+        val (first, second) = if (alice.id < bob.id) alice to bob else bob to alice
+        val conversation = conversationRepository.save(ConversationModel(userOne = first, userTwo = second))
         val baseTime = Instant.parse("2026-01-15T10:00:00Z")
-        createMessage(conversation, alice, "Message 1", baseTime)
-        createMessage(conversation, bob, "Message 2", baseTime.plusSeconds(60))
-        createMessage(conversation, alice, "Message 3", baseTime.plusSeconds(120))
+        chatMessageRepository.save(
+            ChatMessageModel(conversation = conversation, sender = alice, content = "Message 1", sentAt = baseTime),
+        )
+        chatMessageRepository.save(
+            ChatMessageModel(conversation = conversation, sender = bob, content = "Message 2", sentAt = baseTime.plusSeconds(60)),
+        )
+        chatMessageRepository.save(
+            ChatMessageModel(conversation = conversation, sender = alice, content = "Message 3", sentAt = baseTime.plusSeconds(120)),
+        )
 
         // when & then — fetch only messages before Message 3
         mockMvc
@@ -164,7 +213,18 @@ class ChatControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 404 when conversation does not exist`() {
         // given
-        val (_, token) = createUserAndGetToken()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "alice@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Alice",
+                    lastName = "Schmidt",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
 
         // when & then
         mockMvc
@@ -179,11 +239,40 @@ class ChatControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 403 when user is not a conversation member`() {
         // given
-        val (alice, _) = createUserAndGetToken()
-        val (bob, _) = createUserAndGetToken(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
-        val (charlie, tokenCharlie) =
-            createUserAndGetToken(email = "charlie@firma.de", firstName = "Charlie", lastName = "Weber")
-        val conversation = createConversation(alice, bob)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val alice =
+            userRepository.save(
+                UserModel(
+                    email = "alice@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Alice",
+                    lastName = "Schmidt",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val bob =
+            userRepository.save(
+                UserModel(
+                    email = "bob@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Bob",
+                    lastName = "Mueller",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val charlie =
+            userRepository.save(
+                UserModel(
+                    email = "charlie@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Charlie",
+                    lastName = "Weber",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val tokenCharlie = jwtService.generateAccessToken(charlie)
+        val (first, second) = if (alice.id < bob.id) alice to bob else bob to alice
+        val conversation = conversationRepository.save(ConversationModel(userOne = first, userTwo = second))
 
         // when & then
         mockMvc
@@ -208,9 +297,29 @@ class ChatControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should create new conversation and return 201`() {
         // given
-        val (alice, tokenAlice) = createUserAndGetToken()
-        val (bob, _) = createUserAndGetToken(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
-        val request = CreateConversationRequest(userId = bob.id)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val alice =
+            userRepository.save(
+                UserModel(
+                    email = "alice@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Alice",
+                    lastName = "Schmidt",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val bob =
+            userRepository.save(
+                UserModel(
+                    email = "bob@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Bob",
+                    lastName = "Mueller",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val tokenAlice = jwtService.generateAccessToken(alice)
+        val request = ChatFixtures.buildCreateConversationRequest(userId = bob.id)
 
         // when & then
         mockMvc
@@ -229,10 +338,31 @@ class ChatControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return existing conversation with 200`() {
         // given
-        val (alice, tokenAlice) = createUserAndGetToken()
-        val (bob, _) = createUserAndGetToken(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
-        val existing = createConversation(alice, bob)
-        val request = CreateConversationRequest(userId = bob.id)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val alice =
+            userRepository.save(
+                UserModel(
+                    email = "alice@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Alice",
+                    lastName = "Schmidt",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val bob =
+            userRepository.save(
+                UserModel(
+                    email = "bob@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Bob",
+                    lastName = "Mueller",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val tokenAlice = jwtService.generateAccessToken(alice)
+        val (first, second) = if (alice.id < bob.id) alice to bob else bob to alice
+        val existing = conversationRepository.save(ConversationModel(userOne = first, userTwo = second))
+        val request = ChatFixtures.buildCreateConversationRequest(userId = bob.id)
 
         // when & then
         mockMvc
@@ -249,8 +379,19 @@ class ChatControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 400 when creating conversation with yourself`() {
         // given
-        val (alice, tokenAlice) = createUserAndGetToken()
-        val request = CreateConversationRequest(userId = alice.id)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val alice =
+            userRepository.save(
+                UserModel(
+                    email = "alice@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Alice",
+                    lastName = "Schmidt",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val tokenAlice = jwtService.generateAccessToken(alice)
+        val request = ChatFixtures.buildCreateConversationRequest(userId = alice.id)
 
         // when & then
         mockMvc
@@ -265,8 +406,19 @@ class ChatControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 404 when partner user does not exist`() {
         // given
-        val (_, token) = createUserAndGetToken()
-        val request = CreateConversationRequest(userId = "nonexistent-id")
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "alice@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Alice",
+                    lastName = "Schmidt",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
+        val request = ChatFixtures.buildCreateConversationRequest(userId = "nonexistent-id")
 
         // when & then
         mockMvc
@@ -282,7 +434,18 @@ class ChatControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 400 when userId is blank`() {
         // given
-        val (_, token) = createUserAndGetToken()
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "alice@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Alice",
+                    lastName = "Schmidt",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val token = jwtService.generateAccessToken(user)
 
         // when & then
         mockMvc

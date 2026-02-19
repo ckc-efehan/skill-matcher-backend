@@ -10,10 +10,11 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.efehan.skillmatcherbackend.core.auth.AuthResponse
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCodeResponse
-import org.springframework.http.ResponseEntity
+import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -97,14 +98,12 @@ class InvitationController(
         ],
     )
     @PostMapping("/validate")
+    @ResponseStatus(HttpStatus.OK)
     fun validateInvitation(
         @Valid
         @RequestBody
         request: ValidateInvitationRequest,
-    ): ResponseEntity<ValidateInvitationResponse> =
-        ResponseEntity.ok(
-            invitationService.validateInvitation(request.token),
-        )
+    ): ValidateInvitationResponse = invitationService.validateInvitation(request.token).toDTO()
 
     @Operation(
         summary = "Accept invitation",
@@ -190,12 +189,10 @@ class InvitationController(
         ],
     )
     @PostMapping("/accept")
+    @ResponseStatus(HttpStatus.OK)
     fun acceptInvitation(
         @Valid
         @RequestBody
         request: AcceptInvitationRequest,
-    ): ResponseEntity<AuthResponse> =
-        ResponseEntity.ok(
-            invitationService.acceptInvitation(request.token, request.password, request.firstName, request.lastName),
-        )
+    ): AuthResponse = invitationService.acceptInvitation(request.token, request.password, request.firstName, request.lastName)
 }

@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import org.efehan.skillmatcherbackend.core.project.ProjectDto
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
@@ -31,7 +32,20 @@ class ProjectModel(
     @ManyToOne(optional = false)
     @JoinColumn(name = "owner_id", nullable = false)
     val owner: UserModel,
-) : AuditingBaseEntity()
+) : AuditingBaseEntity() {
+    fun toDTO() =
+        ProjectDto(
+            id = id,
+            name = name,
+            description = description,
+            status = status.name,
+            startDate = startDate,
+            endDate = endDate,
+            maxMembers = maxMembers,
+            ownerName = "${owner.firstName} ${owner.lastName}",
+            createdDate = createdDate,
+        )
+}
 
 @Repository
 interface ProjectRepository : JpaRepository<ProjectModel, String> {

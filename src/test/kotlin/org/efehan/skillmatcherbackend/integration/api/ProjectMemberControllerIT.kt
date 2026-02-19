@@ -1,10 +1,10 @@
 package org.efehan.skillmatcherbackend.integration.api
 
 import org.efehan.skillmatcherbackend.core.auth.JwtService
-import org.efehan.skillmatcherbackend.persistence.ProjectMemberModel
+import org.efehan.skillmatcherbackend.fixtures.builder.ProjectBuilder
+import org.efehan.skillmatcherbackend.fixtures.builder.ProjectMemberBuilder
+import org.efehan.skillmatcherbackend.fixtures.requests.ProjectMemberFixtures
 import org.efehan.skillmatcherbackend.persistence.ProjectMemberStatus
-import org.efehan.skillmatcherbackend.persistence.ProjectModel
-import org.efehan.skillmatcherbackend.persistence.ProjectStatus
 import org.efehan.skillmatcherbackend.persistence.RoleModel
 import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.testcontainers.AbstractIntegrationTest
@@ -15,8 +15,6 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
-import java.time.Instant
-import java.time.LocalDate
 
 @DisplayName("ProjectMemberController Integration Tests")
 class ProjectMemberControllerIT : AbstractIntegrationTest() {
@@ -26,85 +24,80 @@ class ProjectMemberControllerIT : AbstractIntegrationTest() {
     @Autowired
     private lateinit var jwtService: JwtService
 
-    private fun createRole(name: String): RoleModel = roleRepository.save(RoleModel(name, null))
-
-    private fun createUser(
-        email: String,
-        role: RoleModel,
-    ): UserModel {
-        val user =
-            UserModel(
-                email = email,
-                passwordHash = passwordEncoder.encode("Test-Password1!"),
-                firstName = "Test",
-                lastName = "User",
-                role = role,
-            )
-        user.isEnabled = true
-        return userRepository.save(user)
-    }
-
-    private fun createProject(
-        owner: UserModel,
-        maxMembers: Int = 5,
-    ): ProjectModel =
-        projectRepository.save(
-            ProjectModel(
-                name = "Test Project",
-                description = "A test project",
-                owner = owner,
-                status = ProjectStatus.PLANNED,
-                startDate = LocalDate.of(2026, 3, 1),
-                endDate = LocalDate.of(2026, 12, 31),
-                maxMembers = maxMembers,
-            ),
-        )
-
     @Test
     fun `should add member and return 201`() {
         // given
-        val role = createRole("PROJECTMANAGER")
-        val owner = createUser("owner@firma.de", role)
-        val member = createUser("member@firma.de", role)
-        val project = createProject(owner)
+        val role = roleRepository.save(RoleModel("PROJECTMANAGER", null))
+        val owner =
+            userRepository.save(
+                UserModel(
+                    email = "owner@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val member =
+            userRepository.save(
+                UserModel(
+                    email = "member@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val project = projectRepository.save(ProjectBuilder().build(owner = owner))
         val token = jwtService.generateAccessToken(owner)
 
         // when & then
         mockMvc
             .post("/api/projects/${project.id}/members") {
                 header("Authorization", "Bearer $token")
-                withBodyRequest(mapOf("userId" to member.id))
+                withBodyRequest(ProjectMemberFixtures.buildAddProjectMemberRequest(userId = member.id))
             }.andExpect {
                 status { isCreated() }
                 jsonPath("$.userId") { value(member.id) }
                 jsonPath("$.status") { value("ACTIVE") }
-                jsonPath("$.userName") { value("Test User") }
-                jsonPath("$.email") { value("member@firma.de") }
+                jsonPath("$.userName") { value("${member.firstName} ${member.lastName}") }
+                jsonPath("$.email") { value(member.email) }
             }
     }
 
     @Test
     fun `should return 409 when member already active`() {
         // given
-        val role = createRole("PROJECTMANAGER")
-        val owner = createUser("owner@firma.de", role)
-        val member = createUser("member@firma.de", role)
-        val project = createProject(owner)
+        val role = roleRepository.save(RoleModel("PROJECTMANAGER", null))
+        val owner =
+            userRepository.save(
+                UserModel(
+                    email = "owner@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val member =
+            userRepository.save(
+                UserModel(
+                    email = "member@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val project = projectRepository.save(ProjectBuilder().build(owner = owner))
         val token = jwtService.generateAccessToken(owner)
-        projectMemberRepository.save(
-            ProjectMemberModel(
-                project = project,
-                user = member,
-                status = ProjectMemberStatus.ACTIVE,
-                joinedDate = Instant.now(),
-            ),
-        )
+        projectMemberRepository.save(ProjectMemberBuilder().build(project = project, user = member))
 
         // when & then
         mockMvc
             .post("/api/projects/${project.id}/members") {
                 header("Authorization", "Bearer $token")
-                withBodyRequest(mapOf("userId" to member.id))
+                withBodyRequest(ProjectMemberFixtures.buildAddProjectMemberRequest(userId = member.id))
             }.andExpect {
                 status { isConflict() }
                 jsonPath("$.errorCode") { value("PROJECT_MEMBER_DUPLICATE") }
@@ -114,25 +107,38 @@ class ProjectMemberControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should reactivate LEFT member`() {
         // given
-        val role = createRole("PROJECTMANAGER")
-        val owner = createUser("owner@firma.de", role)
-        val member = createUser("member@firma.de", role)
-        val project = createProject(owner)
+        val role = roleRepository.save(RoleModel("PROJECTMANAGER", null))
+        val owner =
+            userRepository.save(
+                UserModel(
+                    email = "owner@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val member =
+            userRepository.save(
+                UserModel(
+                    email = "member@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val project = projectRepository.save(ProjectBuilder().build(owner = owner))
         val token = jwtService.generateAccessToken(owner)
         projectMemberRepository.save(
-            ProjectMemberModel(
-                project = project,
-                user = member,
-                status = ProjectMemberStatus.LEFT,
-                joinedDate = Instant.now(),
-            ),
+            ProjectMemberBuilder().build(project = project, user = member, status = ProjectMemberStatus.LEFT),
         )
 
         // when & then
         mockMvc
             .post("/api/projects/${project.id}/members") {
                 header("Authorization", "Bearer $token")
-                withBodyRequest(mapOf("userId" to member.id))
+                withBodyRequest(ProjectMemberFixtures.buildAddProjectMemberRequest(userId = member.id))
             }.andExpect {
                 status { isCreated() }
                 jsonPath("$.status") { value("ACTIVE") }
@@ -142,26 +148,58 @@ class ProjectMemberControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 409 when project is full`() {
         // given
-        val role = createRole("PROJECTMANAGER")
-        val owner = createUser("owner@firma.de", role)
-        val member1 = createUser("m1@firma.de", role)
-        val member2 = createUser("m2@firma.de", role)
-        val newMember = createUser("new@firma.de", role)
-        val project = createProject(owner, maxMembers = 2)
+        val role = roleRepository.save(RoleModel("PROJECTMANAGER", null))
+        val owner =
+            userRepository.save(
+                UserModel(
+                    email = "owner@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val member1 =
+            userRepository.save(
+                UserModel(
+                    email = "m1@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val member2 =
+            userRepository.save(
+                UserModel(
+                    email = "m2@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val newMember =
+            userRepository.save(
+                UserModel(
+                    email = "new@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val project = projectRepository.save(ProjectBuilder().build(owner = owner, maxMembers = 2))
         val token = jwtService.generateAccessToken(owner)
 
-        projectMemberRepository.save(
-            ProjectMemberModel(project = project, user = member1, status = ProjectMemberStatus.ACTIVE, joinedDate = Instant.now()),
-        )
-        projectMemberRepository.save(
-            ProjectMemberModel(project = project, user = member2, status = ProjectMemberStatus.ACTIVE, joinedDate = Instant.now()),
-        )
+        projectMemberRepository.save(ProjectMemberBuilder().build(project = project, user = member1))
+        projectMemberRepository.save(ProjectMemberBuilder().build(project = project, user = member2))
 
         // when & then
         mockMvc
             .post("/api/projects/${project.id}/members") {
                 header("Authorization", "Bearer $token")
-                withBodyRequest(mapOf("userId" to newMember.id))
+                withBodyRequest(ProjectMemberFixtures.buildAddProjectMemberRequest(userId = newMember.id))
             }.andExpect {
                 status { isConflict() }
                 jsonPath("$.errorCode") { value("PROJECT_FULL") }
@@ -171,17 +209,35 @@ class ProjectMemberControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 403 when caller is not project owner`() {
         // given
-        val role = createRole("PROJECTMANAGER")
-        val owner = createUser("owner@firma.de", role)
-        val nonOwner = createUser("other@firma.de", role)
-        val project = createProject(owner)
+        val role = roleRepository.save(RoleModel("PROJECTMANAGER", null))
+        val owner =
+            userRepository.save(
+                UserModel(
+                    email = "owner@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val nonOwner =
+            userRepository.save(
+                UserModel(
+                    email = "other@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val project = projectRepository.save(ProjectBuilder().build(owner = owner))
         val token = jwtService.generateAccessToken(nonOwner)
 
         // when & then
         mockMvc
             .post("/api/projects/${project.id}/members") {
                 header("Authorization", "Bearer $token")
-                withBodyRequest(mapOf("userId" to nonOwner.id))
+                withBodyRequest(ProjectMemberFixtures.buildAddProjectMemberRequest(userId = nonOwner.id))
             }.andExpect {
                 status { isForbidden() }
                 jsonPath("$.errorCode") { value("PROJECT_ACCESS_DENIED") }
@@ -191,18 +247,43 @@ class ProjectMemberControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should list only active members`() {
         // given
-        val role = createRole("PROJECTMANAGER")
-        val owner = createUser("owner@firma.de", role)
-        val active = createUser("active@firma.de", role)
-        val left = createUser("left@firma.de", role)
-        val project = createProject(owner)
+        val role = roleRepository.save(RoleModel("PROJECTMANAGER", null))
+        val owner =
+            userRepository.save(
+                UserModel(
+                    email = "owner@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val active =
+            userRepository.save(
+                UserModel(
+                    email = "active@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val left =
+            userRepository.save(
+                UserModel(
+                    email = "left@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val project = projectRepository.save(ProjectBuilder().build(owner = owner))
         val token = jwtService.generateAccessToken(owner)
 
+        projectMemberRepository.save(ProjectMemberBuilder().build(project = project, user = active))
         projectMemberRepository.save(
-            ProjectMemberModel(project = project, user = active, status = ProjectMemberStatus.ACTIVE, joinedDate = Instant.now()),
-        )
-        projectMemberRepository.save(
-            ProjectMemberModel(project = project, user = left, status = ProjectMemberStatus.LEFT, joinedDate = Instant.now()),
+            ProjectMemberBuilder().build(project = project, user = left, status = ProjectMemberStatus.LEFT),
         )
 
         // when & then
@@ -212,22 +293,38 @@ class ProjectMemberControllerIT : AbstractIntegrationTest() {
             }.andExpect {
                 status { isOk() }
                 jsonPath("$.length()") { value(1) }
-                jsonPath("$[0].email") { value("active@firma.de") }
+                jsonPath("$[0].email") { value(active.email) }
             }
     }
 
     @Test
     fun `should remove member and return 204`() {
         // given
-        val role = createRole("PROJECTMANAGER")
-        val owner = createUser("owner@firma.de", role)
-        val member = createUser("member@firma.de", role)
-        val project = createProject(owner)
+        val role = roleRepository.save(RoleModel("PROJECTMANAGER", null))
+        val owner =
+            userRepository.save(
+                UserModel(
+                    email = "owner@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val member =
+            userRepository.save(
+                UserModel(
+                    email = "member@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val project = projectRepository.save(ProjectBuilder().build(owner = owner))
         val token = jwtService.generateAccessToken(owner)
 
-        projectMemberRepository.save(
-            ProjectMemberModel(project = project, user = member, status = ProjectMemberStatus.ACTIVE, joinedDate = Instant.now()),
-        )
+        projectMemberRepository.save(ProjectMemberBuilder().build(project = project, user = member))
 
         // when & then
         mockMvc
@@ -241,10 +338,28 @@ class ProjectMemberControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 404 when removing non-member`() {
         // given
-        val role = createRole("PROJECTMANAGER")
-        val owner = createUser("owner@firma.de", role)
-        val nonMember = createUser("non@firma.de", role)
-        val project = createProject(owner)
+        val role = roleRepository.save(RoleModel("PROJECTMANAGER", null))
+        val owner =
+            userRepository.save(
+                UserModel(
+                    email = "owner@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val nonMember =
+            userRepository.save(
+                UserModel(
+                    email = "non@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val project = projectRepository.save(ProjectBuilder().build(owner = owner))
         val token = jwtService.generateAccessToken(owner)
 
         // when & then
@@ -260,15 +375,31 @@ class ProjectMemberControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should allow member to leave project`() {
         // given
-        val role = createRole("PROJECTMANAGER")
-        val owner = createUser("owner@firma.de", role)
-        val member = createUser("member@firma.de", role)
-        val project = createProject(owner)
+        val role = roleRepository.save(RoleModel("PROJECTMANAGER", null))
+        val owner =
+            userRepository.save(
+                UserModel(
+                    email = "owner@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val member =
+            userRepository.save(
+                UserModel(
+                    email = "member@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val project = projectRepository.save(ProjectBuilder().build(owner = owner))
         val memberToken = jwtService.generateAccessToken(member)
 
-        projectMemberRepository.save(
-            ProjectMemberModel(project = project, user = member, status = ProjectMemberStatus.ACTIVE, joinedDate = Instant.now()),
-        )
+        projectMemberRepository.save(ProjectMemberBuilder().build(project = project, user = member))
 
         // when & then
         mockMvc
@@ -282,10 +413,28 @@ class ProjectMemberControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 404 when leaving project user is not member of`() {
         // given
-        val role = createRole("PROJECTMANAGER")
-        val owner = createUser("owner@firma.de", role)
-        val nonMember = createUser("non@firma.de", role)
-        val project = createProject(owner)
+        val role = roleRepository.save(RoleModel("PROJECTMANAGER", null))
+        val owner =
+            userRepository.save(
+                UserModel(
+                    email = "owner@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val nonMember =
+            userRepository.save(
+                UserModel(
+                    email = "non@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val project = projectRepository.save(ProjectBuilder().build(owner = owner))
         val token = jwtService.generateAccessToken(nonMember)
 
         // when & then

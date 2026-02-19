@@ -1,6 +1,7 @@
 package org.efehan.skillmatcherbackend.service
 
 import io.mockk.every
+import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.slot
@@ -9,16 +10,15 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.efehan.skillmatcherbackend.core.chat.ChatService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
-import org.efehan.skillmatcherbackend.persistence.ChatMessageModel
+import org.efehan.skillmatcherbackend.fixtures.builder.ChatMessageBuilder
+import org.efehan.skillmatcherbackend.fixtures.builder.ConversationBuilder
+import org.efehan.skillmatcherbackend.fixtures.builder.UserBuilder
 import org.efehan.skillmatcherbackend.persistence.ChatMessageRepository
 import org.efehan.skillmatcherbackend.persistence.ConversationModel
 import org.efehan.skillmatcherbackend.persistence.ConversationRepository
-import org.efehan.skillmatcherbackend.persistence.RoleModel
-import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -42,37 +42,15 @@ class ChatServiceTest {
     @MockK
     private lateinit var messagingTemplate: SimpMessagingTemplate
 
+    @InjectMockKs
     private lateinit var chatService: ChatService
-
-    private val role = RoleModel("EMPLOYER", null)
-
-    private val userA =
-        UserModel(
-            email = "alice@firma.de",
-            passwordHash = "hashed",
-            firstName = "Alice",
-            lastName = "Schmidt",
-            role = role,
-        )
-
-    private val userB =
-        UserModel(
-            email = "bob@firma.de",
-            passwordHash = "hashed",
-            firstName = "Bob",
-            lastName = "Mueller",
-            role = role,
-        )
-
-    @BeforeEach
-    fun setUp() {
-        chatService = ChatService(conversationRepo, messageRepo, userRepo, messagingTemplate)
-    }
 
     @Test
     fun `getConversations returns conversations for user`() {
         // given
-        val conversation = ConversationModel(userOne = userA, userTwo = userB)
+        val userA = UserBuilder().build()
+        val userB = UserBuilder().build(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
+        val conversation = ConversationBuilder().build(userOne = userA, userTwo = userB)
         every { conversationRepo.findByUser(userA) } returns listOf(conversation)
 
         // when
@@ -86,10 +64,11 @@ class ChatServiceTest {
     @Test
     fun `getConversations returns empty list when no conversations exist`() {
         // given
-        every { conversationRepo.findByUser(userA) } returns emptyList()
+        val user = UserBuilder().build()
+        every { conversationRepo.findByUser(user) } returns emptyList()
 
         // when
-        val result = chatService.getConversations(userA)
+        val result = chatService.getConversations(user)
 
         // then
         assertThat(result).isEmpty()
@@ -98,8 +77,10 @@ class ChatServiceTest {
     @Test
     fun `getLastMessages returns map keyed by conversation id`() {
         // given
-        val conversation = ConversationModel(userOne = userA, userTwo = userB)
-        val message = ChatMessageModel(conversation = conversation, sender = userA, content = "Hello", sentAt = Instant.now())
+        val userA = UserBuilder().build()
+        val userB = UserBuilder().build(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
+        val conversation = ConversationBuilder().build(userOne = userA, userTwo = userB)
+        val message = ChatMessageBuilder().build(conversation = conversation, sender = userA)
         every { messageRepo.findLastMessagesByConversations(listOf(conversation)) } returns listOf(message)
 
         // when
@@ -123,8 +104,10 @@ class ChatServiceTest {
     @Test
     fun `getLastMessage returns message when exists`() {
         // given
-        val conversation = ConversationModel(userOne = userA, userTwo = userB)
-        val message = ChatMessageModel(conversation = conversation, sender = userA, content = "Hello", sentAt = Instant.now())
+        val userA = UserBuilder().build()
+        val userB = UserBuilder().build(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
+        val conversation = ConversationBuilder().build(userOne = userA, userTwo = userB)
+        val message = ChatMessageBuilder().build(conversation = conversation, sender = userA)
         every { messageRepo.findTopByConversationOrderBySentAtDesc(conversation) } returns message
 
         // when
@@ -137,7 +120,9 @@ class ChatServiceTest {
     @Test
     fun `getLastMessage returns null when no messages exist`() {
         // given
-        val conversation = ConversationModel(userOne = userA, userTwo = userB)
+        val userA = UserBuilder().build()
+        val userB = UserBuilder().build(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
+        val conversation = ConversationBuilder().build(userOne = userA, userTwo = userB)
         every { messageRepo.findTopByConversationOrderBySentAtDesc(conversation) } returns null
 
         // when
@@ -150,9 +135,11 @@ class ChatServiceTest {
     @Test
     fun `getMessages returns messages for conversation member`() {
         // given
-        val conversation = ConversationModel(userOne = userA, userTwo = userB)
+        val userA = UserBuilder().build()
+        val userB = UserBuilder().build(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
+        val conversation = ConversationBuilder().build(userOne = userA, userTwo = userB)
         val before = Instant.now()
-        val message = ChatMessageModel(conversation = conversation, sender = userB, content = "Hi", sentAt = Instant.now())
+        val message = ChatMessageBuilder().build(conversation = conversation, sender = userB, content = "Hi")
         every { conversationRepo.findById(conversation.id) } returns Optional.of(conversation)
         every { messageRepo.findByConversationBefore(conversation, before, PageRequest.of(0, 20)) } returns listOf(message)
 
@@ -171,7 +158,7 @@ class ChatServiceTest {
 
         // then
         assertThatThrownBy {
-            chatService.getMessages(userA, "nonexistent", Instant.now(), 20)
+            chatService.getMessages(UserBuilder().build(), "nonexistent", Instant.now(), 20)
         }.isInstanceOf(EntryNotFoundException::class.java)
             .satisfies({ ex ->
                 val e = ex as EntryNotFoundException
@@ -182,15 +169,10 @@ class ChatServiceTest {
     @Test
     fun `getMessages throws AccessDeniedException when user is not a member`() {
         // given
-        val otherUser =
-            UserModel(
-                email = "other@firma.de",
-                passwordHash = "hashed",
-                firstName = "Other",
-                lastName = "User",
-                role = role,
-            )
-        val conversation = ConversationModel(userOne = userA, userTwo = userB)
+        val userA = UserBuilder().build()
+        val userB = UserBuilder().build(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
+        val otherUser = UserBuilder().build(email = "other@firma.de", firstName = "Other", lastName = "User")
+        val conversation = ConversationBuilder().build(userOne = userA, userTwo = userB)
         every { conversationRepo.findById(conversation.id) } returns Optional.of(conversation)
 
         // then
@@ -206,6 +188,8 @@ class ChatServiceTest {
     @Test
     fun `createConversation creates new conversation when none exists`() {
         // given
+        val userA = UserBuilder().build()
+        val userB = UserBuilder().build(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
         every { userRepo.findById(userB.id) } returns Optional.of(userB)
         every { conversationRepo.findByUsers(userA, userB) } returns null
         every { conversationRepo.save(any()) } returnsArgument 0
@@ -221,7 +205,9 @@ class ChatServiceTest {
     @Test
     fun `createConversation returns existing conversation when already exists`() {
         // given
-        val existing = ConversationModel(userOne = userA, userTwo = userB)
+        val userA = UserBuilder().build()
+        val userB = UserBuilder().build(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
+        val existing = ConversationBuilder().build(userOne = userA, userTwo = userB)
         every { userRepo.findById(userB.id) } returns Optional.of(userB)
         every { conversationRepo.findByUsers(userA, userB) } returns existing
 
@@ -237,6 +223,8 @@ class ChatServiceTest {
     @Test
     fun `createConversation orders users by id`() {
         // given
+        val userA = UserBuilder().build()
+        val userB = UserBuilder().build(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
         every { userRepo.findById(userB.id) } returns Optional.of(userB)
         every { conversationRepo.findByUsers(userA, userB) } returns null
         val slot = slot<ConversationModel>()
@@ -255,9 +243,12 @@ class ChatServiceTest {
 
     @Test
     fun `createConversation throws IllegalArgumentException when chatting with yourself`() {
+        // given
+        val user = UserBuilder().build()
+
         // then
         assertThatThrownBy {
-            chatService.createConversation(userA, userA.id)
+            chatService.createConversation(user, user.id)
         }.isInstanceOf(IllegalArgumentException::class.java)
             .hasMessage("Cannot create a conversation with yourself.")
 
@@ -271,7 +262,7 @@ class ChatServiceTest {
 
         // then
         assertThatThrownBy {
-            chatService.createConversation(userA, "nonexistent")
+            chatService.createConversation(UserBuilder().build(), "nonexistent")
         }.isInstanceOf(EntryNotFoundException::class.java)
             .satisfies({ ex ->
                 val e = ex as EntryNotFoundException
@@ -284,7 +275,9 @@ class ChatServiceTest {
     @Test
     fun `sendMessage saves message and sends to both users via websocket`() {
         // given
-        val conversation = ConversationModel(userOne = userA, userTwo = userB)
+        val userA = UserBuilder().build()
+        val userB = UserBuilder().build(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
+        val conversation = ConversationBuilder().build(userOne = userA, userTwo = userB)
         every { conversationRepo.findById(conversation.id) } returns Optional.of(conversation)
         every { messageRepo.save(any()) } returnsArgument 0
         every { messagingTemplate.convertAndSendToUser(any<String>(), any(), any()) } returns Unit
@@ -309,7 +302,7 @@ class ChatServiceTest {
 
         // then
         assertThatThrownBy {
-            chatService.sendMessage(userA, "nonexistent", "Hello")
+            chatService.sendMessage(UserBuilder().build(), "nonexistent", "Hello")
         }.isInstanceOf(EntryNotFoundException::class.java)
             .satisfies({ ex ->
                 val e = ex as EntryNotFoundException
@@ -322,15 +315,10 @@ class ChatServiceTest {
     @Test
     fun `sendMessage throws AccessDeniedException when user is not a member`() {
         // given
-        val otherUser =
-            UserModel(
-                email = "other@firma.de",
-                passwordHash = "hashed",
-                firstName = "Other",
-                lastName = "User",
-                role = role,
-            )
-        val conversation = ConversationModel(userOne = userA, userTwo = userB)
+        val userA = UserBuilder().build()
+        val userB = UserBuilder().build(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
+        val otherUser = UserBuilder().build(email = "other@firma.de", firstName = "Other", lastName = "User")
+        val conversation = ConversationBuilder().build(userOne = userA, userTwo = userB)
         every { conversationRepo.findById(conversation.id) } returns Optional.of(conversation)
 
         // then
@@ -348,7 +336,9 @@ class ChatServiceTest {
     @Test
     fun `sendMessage sends to correct recipient when userTwo sends`() {
         // given
-        val conversation = ConversationModel(userOne = userA, userTwo = userB)
+        val userA = UserBuilder().build()
+        val userB = UserBuilder().build(email = "bob@firma.de", firstName = "Bob", lastName = "Mueller")
+        val conversation = ConversationBuilder().build(userOne = userA, userTwo = userB)
         every { conversationRepo.findById(conversation.id) } returns Optional.of(conversation)
         every { messageRepo.save(any()) } returnsArgument 0
         every { messagingTemplate.convertAndSendToUser(any<String>(), any(), any()) } returns Unit

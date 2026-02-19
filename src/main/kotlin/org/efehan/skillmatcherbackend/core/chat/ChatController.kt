@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.efehan.skillmatcherbackend.core.auth.SecurityUser
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCodeResponse
+import org.efehan.skillmatcherbackend.persistence.ChatMessageModel
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -68,7 +69,7 @@ class ChatController(
         val conversations = chatService.getConversations(user)
         val lastMessages = chatService.getLastMessages(conversations)
         return conversations.map {
-            it.toResponse(currentUser = user, lastMessage = lastMessages[it.id])
+            it.toDTO(currentUser = user, lastMessage = lastMessages[it.id])
         }
     }
 
@@ -161,7 +162,7 @@ class ChatController(
                 conversationId = id,
                 before = before ?: Instant.now(),
                 limit = limit,
-            ).map { it.toResponse() }
+            ).map(ChatMessageModel::toDTO)
 
     @Operation(
         summary = "Create or find a conversation",
@@ -255,7 +256,7 @@ class ChatController(
             )
         val response =
             conversation
-                .toResponse(
+                .toDTO(
                     currentUser = user,
                     lastMessage = chatService.getLastMessage(conversation),
                 )

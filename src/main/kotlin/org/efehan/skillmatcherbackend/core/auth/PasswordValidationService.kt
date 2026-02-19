@@ -13,17 +13,6 @@ class PasswordValidationService {
         const val MAX_LENGTH = 72 // BCrypt truncates after 72 bytes
     }
 
-    private val commonPasswords: Set<String> by lazy {
-        javaClass
-            .getResourceAsStream("/common-passwords.txt")
-            ?.bufferedReader()
-            ?.lineSequence()
-            ?.map { it.trim().lowercase() }
-            ?.filter { it.isNotBlank() }
-            ?.toSet()
-            ?: emptySet()
-    }
-
     fun validate(password: String): List<String> {
         val errors = mutableListOf<String>()
 
@@ -49,10 +38,6 @@ class PasswordValidationService {
 
         if (password.all { it.isLetterOrDigit() }) {
             errors += "Password must contain at least one special character"
-        }
-
-        if (password.lowercase() in commonPasswords) {
-            errors += "Password is too common and easily guessable"
         }
 
         if (password.isNotEmpty() && password.trim().length < password.length) {

@@ -50,6 +50,7 @@ dependencies {
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.mockk)
     testImplementation(libs.assertj)
+    testImplementation(libs.awaitility)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
