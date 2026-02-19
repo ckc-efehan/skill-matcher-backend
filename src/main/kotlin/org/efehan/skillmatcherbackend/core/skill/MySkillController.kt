@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.efehan.skillmatcherbackend.core.auth.SecurityUser
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCodeResponse
+import org.efehan.skillmatcherbackend.persistence.UserSkillModel
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -133,9 +135,9 @@ class MySkillController(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @Valid @RequestBody req: AddSkillRequest,
     ): ResponseEntity<UserSkillDto> {
-        val (dto, created) = service.addOrUpdateSkill(securityUser.user, req.name, req.level)
+        val (model, created) = service.addOrUpdateSkill(securityUser.user, req.name, req.level)
         val status = if (created) HttpStatus.CREATED else HttpStatus.OK
-        return ResponseEntity.status(status).body(dto)
+        return ResponseEntity.status(status).body(model.toDto())
     }
 
     @Operation(
@@ -173,9 +175,10 @@ class MySkillController(
         ],
     )
     @GetMapping
+    @ResponseStatus(HttpStatus.OK)
     fun getMySkills(
         @AuthenticationPrincipal securityUser: SecurityUser,
-    ): ResponseEntity<List<UserSkillDto>> = ResponseEntity.ok(service.getUserSkills(securityUser.user))
+    ): List<UserSkillDto> = service.getUserSkills(securityUser.user).map(UserSkillModel::toDto)
 
     @Operation(
         summary = "Delete a skill",
@@ -257,11 +260,11 @@ class MySkillController(
         ],
     )
     @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun delete(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @PathVariable id: String,
-    ): ResponseEntity<Void> {
+    ) {
         service.deleteSkill(securityUser.user, id)
-        return ResponseEntity.noContent().build()
     }
 }

@@ -8,6 +8,7 @@ import org.efehan.skillmatcherbackend.persistence.UserSkillModel
 import org.efehan.skillmatcherbackend.persistence.UserSkillRepository
 import org.efehan.skillmatcherbackend.shared.exceptions.AccessDeniedException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -22,13 +23,17 @@ class UserSkillService(
         user: UserModel,
         name: String,
         level: Int,
-    ): Pair<UserSkillDto, Boolean> {
+    ): Pair<UserSkillModel, Boolean> {
         require(level in 1..5) { "Level must be between 1 and 5" }
 
-        val skill = getOrCreateSkill(name)
-        val existing = userSkillRepo.findByUserAndSkillId(user, skill.id)
+        val normalized = name.trim().lowercase()
+        val skill =
+            skillRepo.findByNameIgnoreCase(normalized)
+                ?: skillRepo.save(SkillModel(name = normalized))
 
+        val existing = userSkillRepo.findByUserAndSkillId(user, skill.id)
         val created = existing == null
+
         val userSkill =
             if (existing != null) {
                 existing.level = level
@@ -37,29 +42,26 @@ class UserSkillService(
                 userSkillRepo.save(UserSkillModel(user = user, skill = skill, level = level))
             }
 
-        return userSkill.toDto() to created
+        return userSkill to created
     }
 
-    fun getAllSkills(): List<SkillDto> = skillRepo.findAll().map { SkillDto(id = it.id, name = it.name) }
+    fun getAllSkills(): List<SkillModel> = skillRepo.findAll()
 
-    fun getUserSkills(user: UserModel): List<UserSkillDto> = userSkillRepo.findByUser(user).map { it.toDto() }
+    fun getUserSkills(user: UserModel): List<UserSkillModel> = userSkillRepo.findByUser(user)
 
     fun deleteSkill(
         user: UserModel,
         userSkillId: String,
     ) {
         val userSkill =
-            userSkillRepo
-                .findById(userSkillId)
-                .orElseThrow {
-                    EntryNotFoundException(
-                        resource = "UserSkill",
-                        field = "id",
-                        value = userSkillId,
-                        errorCode = GlobalErrorCode.USER_SKILL_NOT_FOUND,
-                        status = HttpStatus.NOT_FOUND,
-                    )
-                }
+            userSkillRepo.findByIdOrNull(userSkillId)
+                ?: throw EntryNotFoundException(
+                    resource = "UserSkill",
+                    field = "id",
+                    value = userSkillId,
+                    errorCode = GlobalErrorCode.USER_SKILL_NOT_FOUND,
+                    status = HttpStatus.NOT_FOUND,
+                )
 
         if (userSkill.user.id != user.id) {
             throw AccessDeniedException(
@@ -71,17 +73,4 @@ class UserSkillService(
 
         userSkillRepo.delete(userSkill)
     }
-
-    private fun getOrCreateSkill(name: String): SkillModel {
-        val normalized = name.trim().lowercase()
-        return skillRepo.findByNameIgnoreCase(normalized)
-            ?: skillRepo.save(SkillModel(name = normalized))
-    }
-
-    private fun UserSkillModel.toDto() =
-        UserSkillDto(
-            id = id,
-            name = skill.name,
-            level = level,
-        )
 }
