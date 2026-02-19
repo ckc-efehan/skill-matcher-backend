@@ -78,7 +78,7 @@ class AuthenticationService(
             refreshToken = refreshToken,
             tokenType = "Bearer",
             expiresIn = accessTokenExpiration,
-            user = user.toAuthUserResponse(),
+            user = user.toAuthDTO(),
         )
     }
 
@@ -117,7 +117,7 @@ class AuthenticationService(
             refreshToken = refreshToken,
             tokenType = "Bearer",
             expiresIn = jwtProperties.accessTokenExpiration,
-            user = user.toAuthUserResponse(),
+            user = user.toAuthDTO(),
         )
     }
 
@@ -160,12 +160,3 @@ class AuthenticationService(
         return newToken
     }
 }
-
-fun UserModel.toAuthUserResponse() =
-    AuthUserResponse(
-        id = id,
-        email = email,
-        firstName = firstName,
-        lastName = lastName,
-        role = role.name,
-    )

@@ -8,6 +8,7 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import org.efehan.skillmatcherbackend.core.admin.AdminUserDto
+import org.efehan.skillmatcherbackend.core.auth.AuthUserResponse
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
@@ -46,6 +47,15 @@ class UserModel(
             role = role.name,
             isEnabled = isEnabled,
             createdDate = createdDate,
+        )
+
+    fun toAuthDTO() =
+        AuthUserResponse(
+            id = id,
+            email = email,
+            firstName = firstName,
+            lastName = lastName,
+            role = role.name,
         )
 }
 

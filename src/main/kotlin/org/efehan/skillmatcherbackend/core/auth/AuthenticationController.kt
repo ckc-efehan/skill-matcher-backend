@@ -9,11 +9,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCodeResponse
-import org.springframework.http.ResponseEntity
+import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -133,17 +134,12 @@ class AuthenticationController(
         ],
     )
     @PostMapping("/login")
+    @ResponseStatus(HttpStatus.OK)
     fun login(
         @Valid
         @RequestBody
         request: LoginRequest,
-    ): ResponseEntity<AuthResponse> =
-        ResponseEntity.ok(
-            authenticationService.login(
-                request.email,
-                request.password,
-            ),
-        )
+    ): AuthResponse = authenticationService.login(request.email, request.password)
 
     @Operation(
         summary = "Refresh access token",
@@ -231,13 +227,11 @@ class AuthenticationController(
         ],
     )
     @PostMapping("/refresh")
+    @ResponseStatus(HttpStatus.OK)
     fun refreshToken(
         @RequestBody
         request: RefreshTokenRequest,
-    ): ResponseEntity<AuthResponse> =
-        ResponseEntity.ok(
-            authenticationService.refreshToken(request.refreshToken),
-        )
+    ): AuthResponse = authenticationService.refreshToken(request.refreshToken)
 
     @Operation(
         summary = "Logout user",
@@ -276,11 +270,11 @@ class AuthenticationController(
         ],
     )
     @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun logout(
         @AuthenticationPrincipal securityUser: SecurityUser,
-    ): ResponseEntity<Void> {
+    ) {
         authenticationService.logout(securityUser.user.id)
-        return ResponseEntity.noContent().build()
     }
 
     @Operation(
@@ -347,17 +341,17 @@ class AuthenticationController(
         ],
     )
     @PostMapping("/change-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun changePassword(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @Valid
         @RequestBody
         request: ChangePasswordRequest,
-    ): ResponseEntity<Void> {
+    ) {
         authenticationService.changePassword(
             user = securityUser.user,
             currentPassword = request.oldPassword,
             newPassword = request.newPassword,
         )
-        return ResponseEntity.noContent().build()
     }
 }

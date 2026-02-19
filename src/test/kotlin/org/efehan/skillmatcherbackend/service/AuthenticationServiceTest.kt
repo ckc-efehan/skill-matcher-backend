@@ -1,6 +1,7 @@
 package org.efehan.skillmatcherbackend.service
 
 import io.mockk.every
+import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
@@ -13,10 +14,10 @@ import org.efehan.skillmatcherbackend.core.auth.AuthenticationService
 import org.efehan.skillmatcherbackend.core.auth.JwtService
 import org.efehan.skillmatcherbackend.core.auth.PasswordValidationService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
+import org.efehan.skillmatcherbackend.fixtures.builder.UserBuilder
 import org.efehan.skillmatcherbackend.persistence.RefreshTokenModel
 import org.efehan.skillmatcherbackend.persistence.RefreshTokenRepository
 import org.efehan.skillmatcherbackend.persistence.RoleModel
-import org.efehan.skillmatcherbackend.persistence.UserModel
 import org.efehan.skillmatcherbackend.persistence.UserRepository
 import org.efehan.skillmatcherbackend.shared.exceptions.AccountDisabledException
 import org.efehan.skillmatcherbackend.shared.exceptions.EntryNotFoundException
@@ -31,7 +32,6 @@ import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.crypto.password.PasswordEncoder
 import java.time.Clock
 import java.time.Instant
-import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 
 @ExtendWith(MockKExtension::class)
@@ -58,6 +58,10 @@ class AuthenticationServiceTest {
     @MockK
     private lateinit var passwordValidationService: PasswordValidationService
 
+    @MockK
+    private lateinit var clock: Clock
+
+    @InjectMockKs
     private lateinit var authenticationService: AuthenticationService
 
     companion object {
@@ -71,47 +75,17 @@ class AuthenticationServiceTest {
         private val FIXED_INSTANT: Instant = Instant.parse("2025-01-01T12:00:00Z")
     }
 
-    private val fixedClock = Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC)
-
     @BeforeEach
     fun setUp() {
+        every { clock.instant() } returns FIXED_INSTANT
         every { jwtProperties.accessTokenExpiration } returns ACCESS_TOKEN_EXPIRATION
         every { jwtProperties.refreshTokenExpiration } returns REFRESH_TOKEN_EXPIRATION
-
-        authenticationService =
-            AuthenticationService(
-                userRepository = userRepository,
-                authenticationManager = authenticationManager,
-                jwtService = jwtService,
-                refreshTokenRepository = refreshTokenRepository,
-                jwtProperties = jwtProperties,
-                passwordEncoder = passwordEncoder,
-                passwordValidationService = passwordValidationService,
-                clock = fixedClock,
-            )
-    }
-
-    private fun buildTestUser(
-        email: String = EMAIL,
-        isEnabled: Boolean = true,
-    ): UserModel {
-        val role = RoleModel("ADMIN", null)
-        val user =
-            UserModel(
-                email = email,
-                passwordHash = "hashed",
-                firstName = "Test",
-                lastName = "User",
-                role = role,
-            )
-        user.isEnabled = isEnabled
-        return user
     }
 
     @Test
     fun `login successfully with correct credentials`() {
         // given
-        val user = buildTestUser()
+        val user = UserBuilder().build(email = EMAIL, firstName = "Test", lastName = "User", role = RoleModel("ADMIN", null))
 
         every { userRepository.findByEmail(EMAIL) } returns user
         every { authenticationManager.authenticate(any()) } returns mockk()
@@ -137,7 +111,7 @@ class AuthenticationServiceTest {
     @Test
     fun `login saves refresh token to database with correct values`() {
         // given
-        val user = buildTestUser()
+        val user = UserBuilder().build(email = EMAIL, firstName = "Test", lastName = "User", role = RoleModel("ADMIN", null))
         val tokenSlot = slot<RefreshTokenModel>()
 
         every { userRepository.findByEmail(EMAIL) } returns user
@@ -161,7 +135,7 @@ class AuthenticationServiceTest {
     @Test
     fun `login calls authenticationManager with correct credentials`() {
         // given
-        val user = buildTestUser()
+        val user = UserBuilder().build(email = EMAIL, firstName = "Test", lastName = "User", role = RoleModel("ADMIN", null))
 
         every { userRepository.findByEmail(EMAIL) } returns user
         every { authenticationManager.authenticate(any()) } returns mockk()
@@ -206,7 +180,14 @@ class AuthenticationServiceTest {
     @Test
     fun `login throws AccountDisabledException when user is disabled`() {
         // given
-        val user = buildTestUser(isEnabled = false)
+        val user =
+            UserBuilder().build(
+                email = EMAIL,
+                firstName = "Test",
+                lastName = "User",
+                role = RoleModel("ADMIN", null),
+                isEnabled = false,
+            )
 
         every { userRepository.findByEmail(EMAIL) } returns user
 
@@ -226,7 +207,7 @@ class AuthenticationServiceTest {
     @Test
     fun `login throws when authenticationManager rejects credentials`() {
         // given
-        val user = buildTestUser()
+        val user = UserBuilder().build(email = EMAIL, firstName = "Test", lastName = "User", role = RoleModel("ADMIN", null))
 
         every { userRepository.findByEmail(EMAIL) } returns user
         every { authenticationManager.authenticate(any()) } throws BadCredentialsException("Bad credentials")
@@ -239,24 +220,16 @@ class AuthenticationServiceTest {
         verify(exactly = 0) { jwtService.generateAccessToken(any()) }
     }
 
-    private fun buildRefreshTokenModel(
-        tokenHash: String = REFRESH_TOKEN_HASH,
-        user: UserModel = buildTestUser(),
-        expiresAt: Instant = FIXED_INSTANT.plus(7, ChronoUnit.DAYS),
-        revoked: Boolean = false,
-    ): RefreshTokenModel =
-        RefreshTokenModel(
-            tokenHash = tokenHash,
-            user = user,
-            expiresAt = expiresAt,
-            revoked = revoked,
-        )
-
     @Test
     fun `refreshToken returns new access token when refresh token is valid`() {
         // given
-        val user = buildTestUser()
-        val existingToken = buildRefreshTokenModel(user = user)
+        val user = UserBuilder().build(email = EMAIL, firstName = "Test", lastName = "User", role = RoleModel("ADMIN", null))
+        val existingToken =
+            RefreshTokenModel(
+                tokenHash = REFRESH_TOKEN_HASH,
+                user = user,
+                expiresAt = FIXED_INSTANT.plus(7, ChronoUnit.DAYS),
+            )
 
         every { jwtService.hashToken(REFRESH_TOKEN) } returns REFRESH_TOKEN_HASH
         every { refreshTokenRepository.findByTokenHash(REFRESH_TOKEN_HASH) } returns existingToken
@@ -294,7 +267,14 @@ class AuthenticationServiceTest {
     @Test
     fun `refreshToken throws InvalidTokenException when token is revoked`() {
         // given
-        val revokedToken = buildRefreshTokenModel(revoked = true)
+        val user = UserBuilder().build(email = EMAIL, firstName = "Test", lastName = "User", role = RoleModel("ADMIN", null))
+        val revokedToken =
+            RefreshTokenModel(
+                tokenHash = REFRESH_TOKEN_HASH,
+                user = user,
+                expiresAt = FIXED_INSTANT.plus(7, ChronoUnit.DAYS),
+                revoked = true,
+            )
 
         every { jwtService.hashToken(REFRESH_TOKEN) } returns REFRESH_TOKEN_HASH
         every { refreshTokenRepository.findByTokenHash(REFRESH_TOKEN_HASH) } returns revokedToken
@@ -314,8 +294,11 @@ class AuthenticationServiceTest {
     @Test
     fun `refreshToken throws InvalidTokenException when token is expired`() {
         // given
+        val user = UserBuilder().build(email = EMAIL, firstName = "Test", lastName = "User", role = RoleModel("ADMIN", null))
         val expiredToken =
-            buildRefreshTokenModel(
+            RefreshTokenModel(
+                tokenHash = REFRESH_TOKEN_HASH,
+                user = user,
                 expiresAt = FIXED_INSTANT.minus(1, ChronoUnit.HOURS),
             )
 
@@ -337,9 +320,10 @@ class AuthenticationServiceTest {
     @Test
     fun `refreshToken does not rotate when remaining days above threshold`() {
         // given - token expires in 5 days (above 2-day threshold)
-        val user = buildTestUser()
+        val user = UserBuilder().build(email = EMAIL, firstName = "Test", lastName = "User", role = RoleModel("ADMIN", null))
         val existingToken =
-            buildRefreshTokenModel(
+            RefreshTokenModel(
+                tokenHash = REFRESH_TOKEN_HASH,
                 user = user,
                 expiresAt = FIXED_INSTANT.plus(5, ChronoUnit.DAYS),
             )
@@ -361,11 +345,12 @@ class AuthenticationServiceTest {
     @Test
     fun `refreshToken rotates when remaining days below threshold`() {
         // given - token expires in 1 day (below 2-day threshold)
-        val user = buildTestUser()
+        val user = UserBuilder().build(email = EMAIL, firstName = "Test", lastName = "User", role = RoleModel("ADMIN", null))
         val newRefreshToken = "new-refresh-token-uuid"
         val newRefreshTokenHash = "new-hashed-refresh-token"
         val existingToken =
-            buildRefreshTokenModel(
+            RefreshTokenModel(
+                tokenHash = REFRESH_TOKEN_HASH,
                 user = user,
                 expiresAt = FIXED_INSTANT.plus(1, ChronoUnit.DAYS),
             )

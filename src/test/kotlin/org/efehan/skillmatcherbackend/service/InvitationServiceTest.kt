@@ -1,6 +1,7 @@
 package org.efehan.skillmatcherbackend.service
 
 import io.mockk.every
+import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.just
@@ -30,7 +31,6 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.password.PasswordEncoder
 import java.time.Clock
 import java.time.Instant
-import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 import java.util.Optional
 
@@ -64,6 +64,10 @@ class InvitationServiceTest {
     @MockK
     private lateinit var passwordValidationService: PasswordValidationService
 
+    @MockK
+    private lateinit var clock: Clock
+
+    @InjectMockKs
     private lateinit var invitationService: InvitationService
 
     companion object {
@@ -75,27 +79,12 @@ class InvitationServiceTest {
         private const val REFRESH_TOKEN_HASH = "hashed-refresh-token"
     }
 
-    private val fixedClock = Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC)
-
     @BeforeEach
     fun setUp() {
+        every { clock.instant() } returns FIXED_INSTANT
         every { invitationProperties.tokenExpirationHours } returns 72L
         every { jwtProperties.accessTokenExpiration } returns 900_000L
         every { jwtProperties.refreshTokenExpiration } returns 604_800_000L
-
-        invitationService =
-            InvitationService(
-                invitationTokenRepository = invitationTokenRepository,
-                userRepository = userRepository,
-                refreshTokenRepository = refreshTokenRepository,
-                jwtService = jwtService,
-                jwtProperties = jwtProperties,
-                emailService = emailService,
-                invitationProperties = invitationProperties,
-                passwordEncoder = passwordEncoder,
-                passwordValidationService = passwordValidationService,
-                clock = fixedClock,
-            )
     }
 
     @Test

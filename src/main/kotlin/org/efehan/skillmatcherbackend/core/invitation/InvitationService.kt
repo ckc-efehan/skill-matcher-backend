@@ -5,7 +5,6 @@ import org.efehan.skillmatcherbackend.config.properties.JwtProperties
 import org.efehan.skillmatcherbackend.core.auth.AuthResponse
 import org.efehan.skillmatcherbackend.core.auth.JwtService
 import org.efehan.skillmatcherbackend.core.auth.PasswordValidationService
-import org.efehan.skillmatcherbackend.core.auth.toAuthUserResponse
 import org.efehan.skillmatcherbackend.core.mail.EmailService
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCode
 import org.efehan.skillmatcherbackend.persistence.InvitationTokenModel
@@ -150,7 +149,7 @@ class InvitationService(
             refreshToken = refreshToken,
             tokenType = "Bearer",
             expiresIn = jwtProperties.accessTokenExpiration,
-            user = user.toAuthUserResponse(),
+            user = user.toAuthDTO(),
         )
     }
 
