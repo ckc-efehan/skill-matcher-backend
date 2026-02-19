@@ -6,6 +6,7 @@ import jakarta.persistence.Index
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import org.efehan.skillmatcherbackend.core.availability.UserAvailabilityDto
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 import java.time.LocalDate
@@ -25,7 +26,14 @@ class UserAvailabilityModel(
     var availableFrom: LocalDate,
     @Column(name = "available_to", nullable = false)
     var availableTo: LocalDate,
-) : AuditingBaseEntity()
+) : AuditingBaseEntity() {
+    fun toDto() =
+        UserAvailabilityDto(
+            id = id,
+            availableFrom = availableFrom,
+            availableTo = availableTo,
+        )
+}
 
 @Repository
 interface UserAvailabilityRepository : JpaRepository<UserAvailabilityModel, String> {

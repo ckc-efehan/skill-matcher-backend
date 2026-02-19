@@ -1,6 +1,7 @@
 package org.efehan.skillmatcherbackend.integration.api
 
 import org.efehan.skillmatcherbackend.core.auth.JwtService
+import org.efehan.skillmatcherbackend.fixtures.requests.UserAvailabilityFixtures
 import org.efehan.skillmatcherbackend.persistence.RoleModel
 import org.efehan.skillmatcherbackend.persistence.UserAvailabilityModel
 import org.efehan.skillmatcherbackend.persistence.UserModel
@@ -23,45 +24,32 @@ class UserAvailabilityControllerIT : AbstractIntegrationTest() {
     @Autowired
     private lateinit var jwtService: JwtService
 
-    private fun createRole(name: String): RoleModel = roleRepository.save(RoleModel(name, null))
-
-    private fun createUser(
-        email: String,
-        role: RoleModel,
-    ): UserModel {
-        val user =
-            UserModel(
-                email = email,
-                passwordHash = passwordEncoder.encode("Test-Password1!"),
-                firstName = "Test",
-                lastName = "User",
-                role = role,
-            )
-        user.isEnabled = true
-        return userRepository.save(user)
-    }
-
     @Test
     fun `should create availability and return 201`() {
         // given
-        val role = createRole("EMPLOYER")
-        val user = createUser("user@firma.de", role)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "user@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
         val token = jwtService.generateAccessToken(user)
+        val request = UserAvailabilityFixtures.buildCreateAvailabilityRequest()
 
         // when & then
         mockMvc
             .post("/api/me/availability") {
                 header("Authorization", "Bearer $token")
-                withBodyRequest(
-                    mapOf(
-                        "availableFrom" to "2026-03-01",
-                        "availableTo" to "2026-06-01",
-                    ),
-                )
+                withBodyRequest(request)
             }.andExpect {
                 status { isCreated() }
-                jsonPath("$.availableFrom") { value("2026-03-01") }
-                jsonPath("$.availableTo") { value("2026-06-01") }
+                jsonPath("$.availableFrom") { value(request.availableFrom.toString()) }
+                jsonPath("$.availableTo") { value(request.availableTo.toString()) }
                 jsonPath("$.id") { isNotEmpty() }
             }
     }
@@ -69,8 +57,17 @@ class UserAvailabilityControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 409 when availability periods overlap`() {
         // given
-        val role = createRole("EMPLOYER")
-        val user = createUser("user@firma.de", role)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "user@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
         val token = jwtService.generateAccessToken(user)
         userAvailabilityRepository.save(
             UserAvailabilityModel(
@@ -79,17 +76,17 @@ class UserAvailabilityControllerIT : AbstractIntegrationTest() {
                 availableTo = LocalDate.of(2026, 6, 1),
             ),
         )
+        val request =
+            UserAvailabilityFixtures.buildCreateAvailabilityRequest(
+                availableFrom = LocalDate.of(2026, 5, 1),
+                availableTo = LocalDate.of(2026, 8, 1),
+            )
 
         // when & then
         mockMvc
             .post("/api/me/availability") {
                 header("Authorization", "Bearer $token")
-                withBodyRequest(
-                    mapOf(
-                        "availableFrom" to "2026-05-01",
-                        "availableTo" to "2026-08-01",
-                    ),
-                )
+                withBodyRequest(request)
             }.andExpect {
                 status { isConflict() }
                 jsonPath("$.errorCode") { value("USER_AVAILABILITY_OVERLAP") }
@@ -99,20 +96,29 @@ class UserAvailabilityControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 400 when availability date range is invalid on create`() {
         // given
-        val role = createRole("EMPLOYER")
-        val user = createUser("user@firma.de", role)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "user@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
         val token = jwtService.generateAccessToken(user)
+        val request =
+            UserAvailabilityFixtures.buildCreateAvailabilityRequest(
+                availableFrom = LocalDate.of(2026, 6, 1),
+                availableTo = LocalDate.of(2026, 3, 1),
+            )
 
         // when & then
         mockMvc
             .post("/api/me/availability") {
                 header("Authorization", "Bearer $token")
-                withBodyRequest(
-                    mapOf(
-                        "availableFrom" to "2026-06-01",
-                        "availableTo" to "2026-03-01",
-                    ),
-                )
+                withBodyRequest(request)
             }.andExpect {
                 status { isBadRequest() }
                 jsonPath("$.errorCode") { value("VALIDATION_ERROR") }
@@ -122,8 +128,17 @@ class UserAvailabilityControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return all availability entries sorted`() {
         // given
-        val role = createRole("EMPLOYER")
-        val user = createUser("user@firma.de", role)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "user@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
         val token = jwtService.generateAccessToken(user)
         userAvailabilityRepository.save(
             UserAvailabilityModel(
@@ -155,8 +170,17 @@ class UserAvailabilityControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return empty list when no entries exist`() {
         // given
-        val role = createRole("EMPLOYER")
-        val user = createUser("user@firma.de", role)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "user@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
         val token = jwtService.generateAccessToken(user)
 
         // when & then
@@ -172,8 +196,17 @@ class UserAvailabilityControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should update availability and return 200`() {
         // given
-        val role = createRole("EMPLOYER")
-        val user = createUser("user@firma.de", role)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "user@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
         val token = jwtService.generateAccessToken(user)
         val entry =
             userAvailabilityRepository.save(
@@ -183,41 +216,42 @@ class UserAvailabilityControllerIT : AbstractIntegrationTest() {
                     availableTo = LocalDate.of(2026, 6, 1),
                 ),
             )
+        val request = UserAvailabilityFixtures.buildUpdateAvailabilityRequest()
 
         // when & then
         mockMvc
             .put("/api/me/availability/${entry.id}") {
                 header("Authorization", "Bearer $token")
-                withBodyRequest(
-                    mapOf(
-                        "availableFrom" to "2026-04-01",
-                        "availableTo" to "2026-07-01",
-                    ),
-                )
+                withBodyRequest(request)
             }.andExpect {
                 status { isOk() }
-                jsonPath("$.availableFrom") { value("2026-04-01") }
-                jsonPath("$.availableTo") { value("2026-07-01") }
+                jsonPath("$.availableFrom") { value(request.availableFrom.toString()) }
+                jsonPath("$.availableTo") { value(request.availableTo.toString()) }
             }
     }
 
     @Test
     fun `should return 404 when updating nonexistent entry`() {
         // given
-        val role = createRole("EMPLOYER")
-        val user = createUser("user@firma.de", role)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "user@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
         val token = jwtService.generateAccessToken(user)
+        val request = UserAvailabilityFixtures.buildUpdateAvailabilityRequest()
 
         // when & then
         mockMvc
             .put("/api/me/availability/nonexistent-id") {
                 header("Authorization", "Bearer $token")
-                withBodyRequest(
-                    mapOf(
-                        "availableFrom" to "2026-04-01",
-                        "availableTo" to "2026-07-01",
-                    ),
-                )
+                withBodyRequest(request)
             }.andExpect {
                 status { isNotFound() }
                 jsonPath("$.errorCode") { value("USER_AVAILABILITY_NOT_FOUND") }
@@ -227,9 +261,27 @@ class UserAvailabilityControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 403 when updating other users entry`() {
         // given
-        val role = createRole("EMPLOYER")
-        val user = createUser("user@firma.de", role)
-        val otherUser = createUser("other@firma.de", role)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "user@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
+        val otherUser =
+            userRepository.save(
+                UserModel(
+                    email = "other@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Other",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
         val token = jwtService.generateAccessToken(user)
         val entry =
             userAvailabilityRepository.save(
@@ -239,17 +291,13 @@ class UserAvailabilityControllerIT : AbstractIntegrationTest() {
                     availableTo = LocalDate.of(2026, 6, 1),
                 ),
             )
+        val request = UserAvailabilityFixtures.buildUpdateAvailabilityRequest()
 
         // when & then
         mockMvc
             .put("/api/me/availability/${entry.id}") {
                 header("Authorization", "Bearer $token")
-                withBodyRequest(
-                    mapOf(
-                        "availableFrom" to "2026-04-01",
-                        "availableTo" to "2026-07-01",
-                    ),
-                )
+                withBodyRequest(request)
             }.andExpect {
                 status { isForbidden() }
                 jsonPath("$.errorCode") { value("USER_AVAILABILITY_ACCESS_DENIED") }
@@ -259,8 +307,17 @@ class UserAvailabilityControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should return 400 when availability date range is invalid on update`() {
         // given
-        val role = createRole("EMPLOYER")
-        val user = createUser("user@firma.de", role)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "user@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
         val token = jwtService.generateAccessToken(user)
         val entry =
             userAvailabilityRepository.save(
@@ -270,17 +327,17 @@ class UserAvailabilityControllerIT : AbstractIntegrationTest() {
                     availableTo = LocalDate.of(2026, 6, 1),
                 ),
             )
+        val request =
+            UserAvailabilityFixtures.buildUpdateAvailabilityRequest(
+                availableFrom = LocalDate.of(2026, 7, 1),
+                availableTo = LocalDate.of(2026, 4, 1),
+            )
 
         // when & then
         mockMvc
             .put("/api/me/availability/${entry.id}") {
                 header("Authorization", "Bearer $token")
-                withBodyRequest(
-                    mapOf(
-                        "availableFrom" to "2026-07-01",
-                        "availableTo" to "2026-04-01",
-                    ),
-                )
+                withBodyRequest(request)
             }.andExpect {
                 status { isBadRequest() }
                 jsonPath("$.errorCode") { value("VALIDATION_ERROR") }
@@ -290,8 +347,17 @@ class UserAvailabilityControllerIT : AbstractIntegrationTest() {
     @Test
     fun `should delete availability and return 204`() {
         // given
-        val role = createRole("EMPLOYER")
-        val user = createUser("user@firma.de", role)
+        val role = roleRepository.save(RoleModel("EMPLOYER", null))
+        val user =
+            userRepository.save(
+                UserModel(
+                    email = "user@firma.de",
+                    passwordHash = passwordEncoder.encode("Test-Password1!"),
+                    firstName = "Test",
+                    lastName = "User",
+                    role = role,
+                ).apply { isEnabled = true },
+            )
         val token = jwtService.generateAccessToken(user)
         val entry =
             userAvailabilityRepository.save(

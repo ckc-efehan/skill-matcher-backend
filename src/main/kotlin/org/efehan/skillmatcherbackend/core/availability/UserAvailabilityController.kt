@@ -10,8 +10,8 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.efehan.skillmatcherbackend.core.auth.SecurityUser
 import org.efehan.skillmatcherbackend.exception.GlobalErrorCodeResponse
+import org.efehan.skillmatcherbackend.persistence.UserAvailabilityModel
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -95,10 +96,17 @@ class UserAvailabilityController(
         ],
     )
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     fun create(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @Valid @RequestBody request: CreateAvailabilityRequest,
-    ): ResponseEntity<UserAvailabilityDto> = ResponseEntity.status(HttpStatus.CREATED).body(service.create(securityUser.user, request))
+    ): UserAvailabilityDto =
+        service
+            .create(
+                user = securityUser.user,
+                availableFrom = request.availableFrom,
+                availableTo = request.availableTo,
+            ).toDto()
 
     @Operation(
         summary = "Get my availability periods",
@@ -126,9 +134,10 @@ class UserAvailabilityController(
         ],
     )
     @GetMapping
+    @ResponseStatus(HttpStatus.OK)
     fun getAll(
         @AuthenticationPrincipal securityUser: SecurityUser,
-    ): ResponseEntity<List<UserAvailabilityDto>> = ResponseEntity.ok(service.getAll(securityUser.user))
+    ): List<UserAvailabilityDto> = service.getAll(securityUser.user).map(UserAvailabilityModel::toDto)
 
     @Operation(
         summary = "Update an availability period",
@@ -198,11 +207,19 @@ class UserAvailabilityController(
         ],
     )
     @PutMapping("/{id}")
+    @ResponseStatus(HttpStatus.OK)
     fun update(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @PathVariable id: String,
         @Valid @RequestBody request: UpdateAvailabilityRequest,
-    ): ResponseEntity<UserAvailabilityDto> = ResponseEntity.ok(service.update(securityUser.user, id, request))
+    ): UserAvailabilityDto =
+        service
+            .update(
+                user = securityUser.user,
+                id = id,
+                availableFrom = request.availableFrom,
+                availableTo = request.availableTo,
+            ).toDto()
 
     @Operation(
         summary = "Delete an availability period",
@@ -244,11 +261,11 @@ class UserAvailabilityController(
         ],
     )
     @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     fun delete(
         @AuthenticationPrincipal securityUser: SecurityUser,
         @PathVariable id: String,
-    ): ResponseEntity<Void> {
+    ) {
         service.delete(securityUser.user, id)
-        return ResponseEntity.noContent().build()
     }
 }
